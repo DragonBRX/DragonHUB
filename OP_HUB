@@ -1386,9 +1386,9 @@ local function _tw(o,pr,t) _ts:Create(o,TweenInfo.new(t or 0.15,Enum.EasingStyle
 local _sg=Instance.new("ScreenGui")
 _sg.Name="DragonHUBUI" _sg.ResetOnSpawn=false _sg.ZIndexBehavior=Enum.ZIndexBehavior.Sibling _sg.IgnoreGuiInset=true _sg.Parent=_pg
 
-local W,H=730,470
-local HDR=44
-local SB=148
+local W,H=420,320
+local HDR=36
+local SB=95
 local win=Instance.new("Frame")
 win.Name="Win" win.Size=UDim2.new(0,W,0,H)
 win.Position=UDim2.new(0.5,-W/2,0.5,-H/2)
