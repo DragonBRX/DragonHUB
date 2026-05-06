@@ -1099,10 +1099,13 @@ local function SmartAttack(target)
     end
 
     local destCF = getPredictedCFrame(cok)
-
-    -- Teleporta e ancora no ar para não cair quando o NPC morrer
-    TPInstant(destCF)
-    _anchorHRP(destCF.Position)
+    local myHrp = hrp()
+    
+    -- Só teleporta se estiver longe (evita teleportes múltiplos desnecessários)
+    if myHrp and (myHrp.Position - destCF.Position).Magnitude > 5 then
+        TPInstant(destCF)
+        _anchorHRP(destCF.Position)
+    end
 
     -- Re-checa alvo após teleporte
     cok = target:FindFirstChild("HumanoidRootPart")
@@ -1112,7 +1115,6 @@ local function SmartAttack(target)
 
     CombatRemote:FireServer(cok.Position)
     AktifSkill()
-    -- Mantém âncora — _clearAlign() é chamado quando o próximo TPInstant acontecer
 end
 
 -- ═══════════════════════════════════════════════════════
