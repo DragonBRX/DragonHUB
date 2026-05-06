@@ -1,1 +1,3387 @@
+local RunService = game:GetService("RunService")
 
+local count = 0
+local conn
+
+conn = RunService.Heartbeat:Connect(function()
+    count += 1
+    if count >= 10 then
+        conn:Disconnect()
+    end
+end)
+
+while count < 10 do
+    RunService.Heartbeat:Wait()
+end
+
+
+if count < 10 then
+    error("detected")
+    return
+end
+
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local LocalPlayer = LP
+local placeId = game.PlaceId
+local jobId = game.JobId
+local RS = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local CombatRemote = RS:WaitForChild("CombatSystem"):WaitForChild("Remotes"):WaitForChild("RequestHit")
+local VirtualUser = game:GetService('VirtualUser')
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local GuiService = game:GetService("GuiService")
+local TeleportService = game:GetService("TeleportService")
+local privateServerId = game.PrivateServerId
+local QuestModule = require(ReplicatedStorage.Modules.QuestConfig)
+local quests = QuestModule.RepeatableQuests
+local QuestEvent = ReplicatedStorage.RemoteEvents.QuestAccept
+local Event = RS:WaitForChild("RemoteEvents"):WaitForChild("AllocateStat")
+local Data = LP:WaitForChild("Data")
+local StatPoints = Data:WaitForChild("StatPoints")
+local MerchantConfig = require(game:GetService("ReplicatedStorage").Modules.MerchantConfig)
+local PurchaseRemote = game:GetService("ReplicatedStorage").Remotes.MerchantRemotes.PurchaseMerchantItem
+local HttpService = game:GetService("HttpService")
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local function hrp() return LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") end
+local ItemRarityConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("ItemRarityConfig"))
+local LoadoutEvent = ReplicatedStorage.RemoteEvents.LoadoutLoad
+_G.selectedMerchantItems = {}
+_G.AutoBuyMerchant = false
+_G.PrioriySystem = false
+_G.PrioriySystem2 = false
+
+_G.DRAGONHUB_ACTIVE = true
+
+local IslandPositions = {
+    ["Starter"] = {
+        Position = Vector3.new(140.46328735351562,16.020355224609375,-232.6060028076172),
+        Distance = 300
+    },
+    ["Jungle"] = {
+        Position = Vector3.new(-549.4597778320312,-1.6375274658203125,450.9712829589844),
+        Distance = 250
+    },
+    ["Desert"] = {
+        Position = Vector3.new(-858.2831420898438,7.399674415588379,-423.21685791015625),
+        Distance = 180
+    },
+    ["Snow"] = {
+        Position = Vector3.new(-404.0072021484375,8.77878475189209,-1108.4066162109375),
+        Distance = 350
+    },
+    ["Sailor"] = {
+        Position = Vector3.new(241.33700561523438,58.223262786865234,878.6301879882812),
+        Distance = 320
+    },
+    ["Shibuya"] = {
+        Position = Vector3.new(1634.826171875,94.87212371826172,249.17959594726562),
+        Distance = 700
+    },
+    ["HuecoMundo"] = {
+        Position = Vector3.new(-548.8748168945312,0.3238450884819031,1172.332763671875),
+        Distance = 400
+    },
+    ["Boss"] = {
+        Position = Vector3.new(768.4255981445312,-0.6666639447212219,-1087.132568359375),
+        Distance = 180
+    },
+    ["Shinjuku"] = {
+        Position = Vector3.new(320.879638671875,-4.17604923248291,-2004.6363525390625),
+        Distance = 750
+    },
+    ["Slime"] = {
+        Position = Vector3.new(-1183.3363037109375,44.49148178100586,212.57144165039062),
+        Distance = 400
+    },
+    ["Academy"] = {
+        Position = Vector3.new(963.0895385742188,2.2623825073242188,1327.1123046875),
+        Distance = 250
+    },
+    ["Judgement"] = {
+        Position = Vector3.new(-1244.099609375,77.01905822753906,-1236.8636474609375),
+        Distance = 420
+    },
+    ["SoulSociety"] = {
+        Position = Vector3.new(-1303.7255859375,1624.6370849609375,1672.4981689453125),
+        Distance = 170
+    }
+}
+
+local ListTrade = {
+    ["Blessed Maiden"] = {
+        {Name = "Aero Core", Amount = 3},
+        {Name = "Celestial Mark", Amount = 1},
+        {Name = "Gale Essence", Amount = 8},
+        {Name = "Tide Remnant", Amount = 14},
+        {Name = "Tempest Relic", Amount = 25}
+    },
+    ["Blessed Maiden Skill F"] = {
+        {Name = "Aero Core", Amount = 8},
+        {Name = "Celestial Mark", Amount = 2},
+        {Name = "Tempest Relic", Amount = 75}
+    },
+    ["SJW V2"] = {
+        {Name = "Monarch Core", Amount = 10},
+        {Name = "Monarch Essence", Amount = 5},
+        {Name = "Kamish Dagger", Amount = 2},
+        {Name = "Shadow Crystal", Amount = 1}
+    },
+    ["Sukuna V2"] = {
+        {Name = "Cursed Flesh", Amount = 1},
+        {Name = "Malevolent Soul", Amount = 3},
+        {Name = "Vessel Ring", Amount = 7},
+        {Name = "Awakened Cursed Finger", Amount = 20}
+    },
+    ["Sukuna V2 Domain"] = {
+        {Name = "Cursed Flesh", Amount = 1},
+        {Name = "Malevolent Soul", Amount = 6},
+        {Name = "Vessel Ring", Amount = 7},
+        {Name = "Awakened Cursed Finger", Amount = 20},
+        {Name = "Shrine Domain Shard", Amount = 1}
+    },
+    ["Gilgamesh Key"] = {
+        {Name = "Phantasm Core", Amount = 3},
+        {Name = "Ancient Shard", Amount = 6},
+        {Name = "Throne Remnant", Amount = 12},
+        {Name = "Golden Essence", Amount = 8},
+        {Name = "Broken Sword", Amount = 100}
+    },
+    ["Gojo V2"] = {
+        {Name = "Six Eye", Amount = 6},
+        {Name = "Reversal Pulse", Amount = 9},
+        {Name = "Blue Singularity", Amount = 6},
+        {Name = "Infinity Essence", Amount = 1}
+    },
+    ["Gojo V2 Domain"] = {
+        {Name = "Six Eye", Amount = 6},
+        {Name = "Reversal Pulse", Amount = 9},
+        {Name = "Blue Singularity", Amount = 6},
+        {Name = "Infinity Essence", Amount = 1},
+        {Name = "Infinity Domain Shard", Amount = 1}
+    },
+    ["Rimuru"] = {
+        {Name = "Sage Pulse", Amount = 9},
+        {Name = "Tempest Seal", Amount = 6},
+        {Name = "Slime Remnant", Amount = 3},
+        {Name = "Slime Core", Amount = 1}
+    },
+    ["Anos"] = {
+        {Name = "Calamity Seal", Amount = 65},
+        {Name = "Demonic Fragment", Amount = 12},
+        {Name = "Demonic Shard", Amount = 6},
+        {Name = "Destruction Eye", Amount = 2},
+        {Name = "Imperial Mark", Amount = 1}
+    },
+    ["Ichigo"] = {
+        {Name = "Boss Ticket", Amount = 500}
+    },
+    ["Cid"] = {
+        {Name = "Atomic Core", Amount = 1},
+        {Name = "Shadow Essence", Amount = 4},
+        {Name = "Void Seed", Amount = 8},
+        {Name = "Umbral Capsule", Amount = 20}
+    },
+    ["Madoka"] = {
+        {Name = "Heart", Amount = 100},
+        {Name = "Divine Fragment", Amount = 8},
+        {Name = "Sacred Bow", Amount = 5},
+        {Name = "Radiant Core", Amount = 3},
+        {Name = "Pink Gem", Amount = 1}
+    },
+    ["Aizen V1"] = {
+        {Name = "Hogyoku Fragment", Amount = 1},
+        {Name = "Reiatsu Core", Amount = 3},
+        {Name = "Illusion Prism", Amount = 6},
+        {Name = "Mirage Pendant", Amount = 10}
+    },
+    ["SJW V1"] = {
+        {Name = "Abyss Edge", Amount = 6},
+        {Name = "Dark Ring", Amount = 3},
+        {Name = "Shadow Heart", Amount = 1}
+    },
+    ["Gojo V1"] = {
+        {Name = "Void Fragment", Amount = 6},
+        {Name = "Limitless Ring", Amount = 3},
+        {Name = "Infinity Core", Amount = 1}
+    },
+    ["Sukuna V1"] = {
+        {Name = "Crimson Heart", Amount = 1},
+        {Name = "Cursed Finger", Amount = 6},
+        {Name = "Dismantle Fang", Amount = 3}
+    },
+    ["Yamato"] = {
+        {Name = "Azure Heart", Amount = 1},
+        {Name = "Silent Storm", Amount = 3},
+        {Name = "Yamato", Amount = 7},
+        {Name = "Frozen Will", Amount = 14}
+    },
+    ["Aizen V2"] = {
+        {Name = "Evolution Fragment", Amount = 1},
+        {Name = "Transcendent Core", Amount = 3},
+        {Name = "Divinity Essence", Amount = 8},
+        {Name = "Fusion Ring", Amount = 15},
+        {Name = "Chrysalis Sigil", Amount = 75}
+    },
+    ["Alter Saber Skill F"] = {
+        {Name = "Alter Essence", Amount = 8},
+        {Name = "Morgan Remnant", Amount = 15},
+        {Name = "Corrupt Crown", Amount = 3},
+        {Name = "Corruption Core", Amount = 12},
+        {Name = "Dark Grail", Amount = 110}
+    },
+    ["Ascend Set 2-8"] = {
+        {Name = "Void Fragment", Amount = 5},
+        {Name = "Limitless Ring", Amount = 2},
+        {Name = "Dismantle Fang", Amount = 7},
+        {Name = "Dark Ring", Amount = 5},
+        {Name = "Reiatsu Core", Amount = 4},
+        {Name = "Hogyoku Fragment", Amount = 2},
+        {Name = "Atomic Core", Amount = 2},
+        {Name = "Blood Ring", Amount = 4},
+        {Name = "Flame Soul", Amount = 3},
+        {Name = "Cursed Flesh", Amount = 2},
+        {Name = "Infinity Essence", Amount = 2},
+        {Name = "Phantasm Core", Amount = 2},
+        {Name = "Slime Core", Amount = 3}
+    },
+    ["Blessing Set 1-10"] = {
+        {Name = "Wood", Amount = 1185},
+        {Name = "Iron", Amount = 575},
+        {Name = "Obsidian", Amount = 365},
+        {Name = "Mythril", Amount = 170},
+        {Name = "Adamantite", Amount = 40}
+    }
+}
+
+_G.AutoBuildSwitch = false
+_G.LuckBuild = 1
+_G.DamageBuild = 2
+_G.BuildThreshold = 15
+
+local TradeNames = {}
+for name,_ in pairs(ListTrade) do
+    table.insert(TradeNames, name)
+end
+
+local function SafetyMode()
+    local BlacklistedUsers = {
+        [2595714482] = true,
+        [516173765] = true,
+        [4512218864] = true,
+        [1743329681] = true,
+        [653208846] = true,
+        [3226663238] = true,
+        [1994122448] = true,
+        [2925788551] = true,
+        [3017035996] = true,
+        [377698788] = true,
+        [2829959745] = true
+    }
+    local function Check(player)
+        if BlacklistedUsers[player.UserId] then
+            game:Shutdown()
+        end
+    end
+    for _,player in ipairs(Players:GetPlayers()) do
+        Check(player)
+    end
+    Players.PlayerAdded:Connect(Check)
+end
+
+local fileName = "DragonHUB/Config/TotalExecution.json"
+if not isfile(fileName) then
+    writefile(fileName, "0")
+end
+local currentValue = tonumber(readfile(fileName)) or 0
+currentValue = currentValue + 1
+writefile(fileName, tostring(currentValue))
+
+_G.SpeedTweenS = 80
+_G.SelectModeTP = "Tween"
+local selectedWeapon = "None"
+
+local CFG_FILE = "DragonHUB/Config/settings.json"
+
+local CFG_KEYS = {
+    FGDXX        = false,
+    FGDZZ        = false,
+    FGDZZXC      = false,
+    FGDSS        = false,
+    infiJMP      = false,
+    EquiD        = false,
+    AutoSkill    = false,
+    SkillZ       = false,
+    SkillX       = false,
+    SkillC       = false,
+    SkillV       = false,
+    SkillF       = false,
+    MultiHitMode = false,
+    PredictiveTP = false,
+    MultiHitCount= 3,
+    AttackDelay  = 0,
+    OrbitalSpeed = 45,
+    ModeAT       = "Above",
+    SelectModeTP = "Tween",
+    SpeedTweenS  = 80,
+    Adis         = 20,
+    AutoStatsMelee   = false,
+    AutoStatsDefense = false,
+    AutoStatsSword   = false,
+    AutoStatsPower   = false,
+    AutoBuildSwitch  = false,
+    DamageBuild      = 2,
+    LuckBuild        = 1,
+    BuildThreshold   = 15,
+    InstantAttackMode  = false,
+    InstantAttackSpeed = 0.1,
+}
+
+local function CFG_Save()
+    pcall(function()
+        local t = {}
+        for k, _ in pairs(CFG_KEYS) do
+            t[k] = _G[k]
+        end
+        t["_weapon"] = selectedWeapon or "None"
+        writefile(CFG_FILE, game:GetService("HttpService"):JSONEncode(t))
+    end)
+end
+
+local _cfgLoaded = {}
+local function CFG_Load()
+    pcall(function()
+        if not isfile(CFG_FILE) then return end
+        local raw = readfile(CFG_FILE)
+        local ok, t = pcall(function() return game:GetService("HttpService"):JSONDecode(raw) end)
+        if not ok or not t then return end
+        for k, def in pairs(CFG_KEYS) do
+            local v = t[k]
+            if v ~= nil then
+                _G[k] = v
+                _cfgLoaded[k] = v
+            else
+                _G[k] = def
+            end
+        end
+        if t["_weapon"] then selectedWeapon = t["_weapon"] end
+        _G.SpeedTweenS  = _G.SpeedTweenS  or 80
+        _G.SelectModeTP = _G.SelectModeTP or "Tween"
+        _G.ModeAT       = _G.ModeAT       or "Above"
+        _G.Adis         = _G.Adis         or 20
+    end)
+end
+
+CFG_Load()
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(5)
+        CFG_Save()
+    end
+end)
+
+local function CFG_Get(key, default)
+    if _cfgLoaded[key] ~= nil then return _cfgLoaded[key] end
+    return default
+end
+
+game:GetService('Players').LocalPlayer.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+function QuestR(a)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local QuestEvent = ReplicatedStorage.RemoteEvents.QuestAccept
+    QuestEvent:FireServer(a)
+end
+
+local function GetClosestIsland(npc)
+    for islandName, data in pairs(IslandPositions) do
+        local distance = (npc - data.Position).Magnitude
+        if distance <= data.Distance then
+            return islandName, data
+        end
+    end
+    return nil, nil
+end
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PortalRemote = ReplicatedStorage.Remotes:WaitForChild("TeleportToPortal")
+
+local function TeleportToIsland(islandName)
+    if not islandName then return end
+    PortalRemote:FireServer(islandName)
+    local char = LP.Character or LP.CharacterAdded:Wait()
+    repeat task.wait() until char:FindFirstChild("HumanoidRootPart")
+end
+
+local function formatNumber(n)
+    n = tonumber(n) or 0
+    local abs = math.abs(n)
+    local function clean(num)
+        local s = string.format("%.2f", num)
+        return s:gsub("%.?0+$", "")
+    end
+    if abs >= 1e12 then return clean(n / 1e12) .. "T"
+    elseif abs >= 1e9 then return clean(n / 1e9) .. "B"
+    elseif abs >= 1e6 then return clean(n / 1e6) .. "M"
+    elseif abs >= 1e3 then return clean(n / 1e3) .. "K"
+    else return tostring(n) end
+end
+
+local function IsBusoActive()
+    local char = player.Character
+    if not char then return false end
+    for _, part in ipairs({char:FindFirstChild("Right Arm"), char:FindFirstChild("Left Arm")}) do
+        if part and part:IsA("Part") then
+            local c = part.Color
+            if c.R == 0 and c.G == 0 and c.B == 0 then return true end
+        end
+    end
+    return false
+end
+
+local function getNPC(kkj)
+    local list = { "None" }
+    local seen = {}
+    local npcsFolder = Workspace:FindFirstChild("NPCs")
+    if not npcsFolder then return list end
+    for _, npc in ipairs(npcsFolder:GetChildren()) do
+        if npc:FindFirstChild("Humanoid") then
+            local name = npc.Name
+            if not kkj and name:find("_") then continue end
+            name = name:gsub("%d+", "")
+            name = name:match("^%s*(.-)%s*$")
+            if name ~= "" and not seen[name] then
+                seen[name] = true
+                table.insert(list, name)
+            end
+        end
+    end
+    table.sort(list)
+    return list
+end
+
+local function GetQuest(npcType)
+    local bestNPC
+    local function checkQuest(name, data)
+        if data.requirements then
+            for _, req in pairs(data.requirements) do
+                if req.npcType == npcType then bestNPC = name return true end
+            end
+        end
+    end
+    for npcName, data in pairs(quests) do
+        if checkQuest(npcName, data) then break end
+        for subName, subData in pairs(data) do
+            if type(subData) == "table" and subData.requirements then
+                if checkQuest(subName, subData) then break end
+            end
+        end
+    end
+    if bestNPC then QuestEvent:FireServer(bestNPC) end
+    return bestNPC
+end
+
+local function findNPC(name, mode)
+    if name == "None" then return nil end
+    local npcsFolder = Workspace:FindFirstChild("NPCs")
+    if not npcsFolder then return nil end
+    for _, npc in pairs(npcsFolder:GetChildren()) do
+        local hum = npc:FindFirstChild("Humanoid")
+        if not hum or hum.Health <= 0 then continue end
+        local originalName = npc.Name
+        local processedName = originalName
+        if mode == "Boss" then
+            if originalName == name then return npc end
+        else
+            if mode ~= "IncludeUnderscore" and originalName:find("_") then continue end
+            processedName = processedName:gsub("%d+", "")
+            processedName = processedName:match("^%s*(.-)%s*$")
+            if processedName == name then return npc end
+        end
+    end
+    return nil
+end
+
+local function getAllWeapons()
+    local weapons = { "None" }
+    local backpack = LP:FindFirstChild("Backpack")
+    local char = LP.Character
+    if backpack then
+        for _, tool in pairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then table.insert(weapons, tool.Name) end
+        end
+    end
+    if char then
+        for _, tool in pairs(char:GetChildren()) do
+            if tool:IsA("Tool") and not table.find(weapons, tool.Name) then
+                table.insert(weapons, tool.Name)
+            end
+        end
+    end
+    return weapons
+end
+
+local function AktifSkill()
+    if _G.AutoSkill then
+        local abilityRemote = ReplicatedStorage.AbilitySystem.Remotes.RequestAbility
+        local fruitRemote = ReplicatedStorage.RemoteEvents.FruitPowerRemote
+        if _G.SkillZ then abilityRemote:FireServer(1) end
+        if _G.SkillX then abilityRemote:FireServer(2) end
+        if _G.SkillC then abilityRemote:FireServer(3) end
+        if _G.SkillV then abilityRemote:FireServer(4) end
+        if _G.SkillF then abilityRemote:FireServer(5) end
+        local fruits = { "Light", "Flame", "Quake" }
+        local keys = {Z=_G.SkillZ, X=_G.SkillX, C=_G.SkillC, V=_G.SkillV, F=_G.SkillF}
+        for _, fruit in ipairs(fruits) do
+            for key, enabled in pairs(keys) do
+                if enabled then
+                    fruitRemote:FireServer("UseAbility", {KeyCode=Enum.KeyCode[key], FruitPower=fruit})
+                end
+            end
+        end
+    end
+end
+
+local isProcessing = false
+
+local function NormalizeMob(str)
+    if not str then return "" end
+    str = str:lower()
+    if str:sub(-1) == "s" then str = str:sub(1,-2) end
+    str = str:gsub("%s+", "")
+    return str
+end
+
+local function GetCurrentQuestTitle()
+    local gui = player.PlayerGui:FindFirstChild("QuestUI")
+    if not gui then return nil end
+    local questFrame = gui:FindFirstChild("Quest")
+    if not questFrame or not questFrame.Visible then return nil end
+    local success, title = pcall(function()
+        return questFrame.Quest.Holder.Content.QuestInfo.QuestTitle.QuestTitle.Text
+    end)
+    if success then return title end
+    return nil
+end
+
+local function GetBestQuest()
+    if isProcessing then return end
+    local levelValue = player.Data.Level.Value
+    local bestQuestName = nil
+    local bestNpcType = nil
+    local maxLevelFound = -1
+    for questName, questData in pairs(quests) do
+        local reqLevel = questData.recommendedLevel
+        if reqLevel and levelValue >= reqLevel then
+            if reqLevel > maxLevelFound then
+                maxLevelFound = reqLevel
+                bestQuestName = questName
+                if questData.requirements then
+                    if questData.requirements.npcType then
+                        bestNpcType = questData.requirements.npcType
+                    else
+                        for _, req in pairs(questData.requirements) do
+                            if type(req) == "table" and req.npcType then
+                                bestNpcType = req.npcType
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    local currentQuestTitle = GetCurrentQuestTitle()
+    if currentQuestTitle then
+        if bestQuestName and currentQuestTitle ~= quests[bestQuestName].title then
+            isProcessing = true
+            local button = player.PlayerGui.QuestUI.Quest.Quest.Holder.Content.Exit.CloseButton
+            firesignal(button.MouseButton1Click)
+            task.wait(1)
+            isProcessing = false
+            return nil, nil
+        end
+        return bestQuestName, bestNpcType
+    end
+    if bestQuestName then
+        isProcessing = true
+        QuestR(bestQuestName)
+        task.wait(1)
+        isProcessing = false
+    end
+    return bestQuestName, bestNpcType
+end
+
+local function GetNPCOptions()
+    local npcFolder = workspace:WaitForChild("ServiceNPCs")
+    local npcOptions = {}
+    for _, obj in ipairs(npcFolder:GetChildren()) do
+        if obj:IsA("Model") then table.insert(npcOptions, obj.Name) end
+    end
+    table.sort(npcOptions)
+    return npcOptions
+end
+
+local function GetAllMerchantItems()
+    local options = {}
+    for itemName, _ in pairs(MerchantConfig.ITEMS) do
+        table.insert(options, itemName)
+    end
+    table.sort(options)
+    return options
+end
+
+local GetStockRemote = game:GetService("ReplicatedStorage").Remotes.MerchantRemotes.GetMerchantStock
+_G.MerchantStockCache = {}
+
+local function CheckAndBuy()
+    if not _G.selectedMerchantItems or #_G.selectedMerchantItems == 0 then return end
+    local merchantStock = _G.MerchantStockCache
+    if not merchantStock then return end
+    if table.find(_G.selectedMerchantItems, "All") then
+        for itemName, data in pairs(merchantStock) do
+            if data.stock and data.stock > 0 then PurchaseRemote:InvokeServer(itemName, 1) end
+        end
+        return
+    end
+    for _, selectedItem in ipairs(_G.selectedMerchantItems) do
+        local data = merchantStock[selectedItem]
+        if data and data.stock and data.stock > 0 then PurchaseRemote:InvokeServer(selectedItem, 1) end
+    end
+end
+
+local function GetMerchantStockNames()
+    local response = GetStockRemote:InvokeServer()
+    if not response or not response.stock then return "Aguarde um momento, carregando estoque...." end
+    _G.MerchantStockCache = response.stock
+    local text = ""
+    for itemName, data in pairs(response.stock) do
+        local p = (data.currency == "Money") and "Money" or "Gems"
+        text = text .. itemName .. " [ x" .. data.stock .. " | " .. data.price .. " " .. p .. " ]\n"
+    end
+    return text
+end
+
+local function GetIslandOptions()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local PortalConfig = require(ReplicatedStorage:WaitForChild("PortalConfig"))
+    local islandOptions = {}
+    for portalId, _ in pairs(PortalConfig.Portals) do
+        table.insert(islandOptions, portalId)
+    end
+    table.sort(islandOptions)
+    return islandOptions
+end
+
+local ClanConfig = require(game:GetService("ReplicatedStorage").Modules.ClanConfig)
+
+local function GetAllClansFormatted()
+    local list = {}
+    _G.ClanDropdownMap = {}
+    for clanName, clanData in pairs(ClanConfig.Clans) do
+        local rarity = clanData.rarity or "Common"
+        local formatted = clanName .. " -> " .. rarity
+        table.insert(list, formatted)
+        _G.ClanDropdownMap[formatted] = clanName
+    end
+    table.sort(list)
+    return list
+end
+
+local function GetClan()
+    local Event = game:GetService("ReplicatedStorage").RemoteEvents.GetPlayerStats
+    local data = Event:InvokeServer()
+    if not data then return nil end
+    return data.Inventory and data.Inventory.Equipped and data.Inventory.Equipped.Clan
+end
+
+local UseItemRemote = game:GetService("ReplicatedStorage").Remotes.UseItem
+_G.AutoRerollClan = false
+_G.ClanRollDelay = 0.2
+
+local function IsTargetClan(currentClan)
+    if not _G.selectedClans then return false end
+    for _, target in pairs(_G.selectedClans) do
+        if currentClan == target then return true end
+    end
+    return false
+end
+
+local function AutoRerollClan()
+    task.spawn(function()
+        while _G.AutoRerollClan and _G.DRAGONHUB_ACTIVE do
+            local currentClan = GetClan()
+            if IsTargetClan(currentClan) then
+                dragonhub("Clã Obtido: " .. currentClan)
+                _G.AutoRerollClan = false
+                break
+            end
+            UseItemRemote:FireServer("Use", "Clan Reroll", 1)
+            task.wait(_G.ClanRollDelay)
+        end
+    end)
+end
+
+function BoostFps()
+    local Lighting = game:GetService("Lighting")
+    local Terrain = workspace:FindFirstChildOfClass("Terrain")
+    for _,v in pairs(Lighting:GetChildren()) do
+        if v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect")
+        or v:IsA("BloomEffect") or v:IsA("DepthOfFieldEffect") then v:Destroy() end
+    end
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 1e10
+    Lighting.Brightness = 1
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then v.Material = Enum.Material.Plastic v.Reflectance = 0 end
+        if v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 1 end
+        if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke")
+        or v:IsA("Fire") or v:IsA("Sparkles") then v.Enabled = false end
+    end
+    if Terrain then
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 1
+    end
+end
+
+local TraitConfig = require(game:GetService("ReplicatedStorage").Modules.TraitConfig)
+_G.selectedTrait = {}
+local DropdownMap = {}
+
+local function GetAllTraitsFormatted()
+    local options = {}
+    for traitName, traitData in pairs(TraitConfig.Traits) do
+        local formatted = traitName .. " -> " .. traitData.Rarity
+        table.insert(options, formatted)
+        DropdownMap[formatted] = traitName
+    end
+    table.sort(options)
+    return options
+end
+
+local function GetEquippedTrait()
+    local Event = game:GetService("ReplicatedStorage").RemoteEvents.GetPlayerStats
+    local data = Event:InvokeServer()
+    if data and data.Trait then return data.Trait end
+    return nil
+end
+
+local function CheckTrait()
+    if not _G.selectedTrait or #_G.selectedTrait == 0 then return end
+    local equippedTrait = GetEquippedTrait()
+    if not equippedTrait then return end
+    for _, selected in pairs(_G.selectedTrait) do
+        if selected == equippedTrait then
+            dragonhub("Trait Obtida: " .. equippedTrait)
+            return true
+        end
+    end
+    game:GetService("ReplicatedStorage").RemoteEvents.TraitReroll:FireServer()
+    return false
+end
+
+local function equipWeapon(toolName)
+    if not toolName or toolName == "None" then return end
+    local char = LP.Character
+    local humanoid = char and char:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    if char:FindFirstChild(toolName) then return end
+    local tool = LP.Backpack:FindFirstChild(toolName)
+    if tool then humanoid:EquipTool(tool) task.wait() end
+end
+
+local airFreezeLoop = {}
+local function toggleAirFreeze(char, state)
+    if not char then return end
+    local hrpLocal = char:FindFirstChild("HumanoidRootPart")
+    if not hrpLocal then return end
+    if state then
+        if airFreezeLoop[char] then return end
+        airFreezeLoop[char] = RunService.Heartbeat:Connect(function()
+            local vel = hrpLocal.AssemblyLinearVelocity
+            hrpLocal.AssemblyLinearVelocity = Vector3.new(vel.X, 0, vel.Z)
+        end)
+    else
+        if airFreezeLoop[char] then
+            airFreezeLoop[char]:Disconnect()
+            airFreezeLoop[char] = nil
+        end
+    end
+end
+
+local RaceConfig = require(game:GetService("ReplicatedStorage").Modules.RaceConfig)
+
+local function GetPlayerStats()
+    local Event = game:GetService("ReplicatedStorage").RemoteEvents.GetPlayerStats
+    return Event:InvokeServer() or {}
+end
+
+local function GetRace()
+    local data = GetPlayerStats()
+    return data.Inventory and data.Inventory.Equipped and data.Inventory.Equipped.Race
+end
+
+local function GetAllRacesFormatted()
+    local list = {}
+    _G.RaceDropdownMap = {}
+    for raceName, raceData in pairs(RaceConfig.Races) do
+        local rarity = raceData.rarity or "Common"
+        local formatted = raceName .. " -> " .. rarity
+        table.insert(list, formatted)
+        _G.RaceDropdownMap[formatted] = raceName
+    end
+    table.sort(list)
+    return list
+end
+
+local function NormalizeToTable(value)
+    if not value then return {} end
+    if typeof(value) == "table" then return value end
+    return { value }
+end
+
+_G.AutoRerollRace = false
+_G.RollDelay = 0.2
+
+local function IsTargetRace(currentRace)
+    if not _G.selectedRaces then return false end
+    for _, target in pairs(_G.selectedRaces) do
+        if currentRace == target then return true end
+    end
+    return false
+end
+
+local function AutoRerollRace()
+    task.spawn(function()
+        while _G.AutoRerollRace and _G.DRAGONHUB_ACTIVE do
+            local currentRace = GetRace()
+            if IsTargetRace(currentRace) then
+                dragonhub("Raça Obtida: " .. currentRace)
+                _G.AutoRerollRace = false
+                break
+            end
+            UseItemRemote:FireServer("Use", "Race Reroll", 1)
+            task.wait(_G.RollDelay)
+        end
+    end)
+end
+
+local noclip = false
+local connection
+local function SetNoclip(state)
+    noclip = state
+    if noclip then
+        connection = RunService.Stepped:Connect(function()
+            if not _G.DRAGONHUB_ACTIVE then
+                if connection then connection:Disconnect() connection = nil end
+                return
+            end
+            local char = LP.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then part.CanCollide = false end
+                end
+            end
+        end)
+    else
+        if connection then connection:Disconnect() connection = nil end
+    end
+end
+
+local TweenService = game:GetService("TweenService")
+
+-- ═══════════════════════════════════════════════════════
+-- SISTEMA DE MOVIMENTO CORRIGIDO
+-- ═══════════════════════════════════════════════════════
+
+-- AlignPosition ativo (âncora no ar)
+local _alignPos = nil
+local _alignAtt = nil
+
+local function _clearAlign()
+    pcall(function()
+        if _alignAtt then _alignAtt:Destroy() end
+        if _alignPos then _alignPos:Destroy() end
+    end)
+    _alignAtt = nil
+    _alignPos = nil
+end
+
+-- Âncora o personagem no ar usando AlignPosition (físico, aceito pelo servidor)
+local function _anchorHRP(targetPos)
+    _clearAlign()
+    local hrpNow = hrp()
+    if not hrpNow then return end
+    local att = Instance.new("Attachment")
+    att.Parent = hrpNow
+    local ap = Instance.new("AlignPosition")
+    ap.Mode = Enum.PositionAlignmentMode.OneAttachment
+    ap.Attachment0 = att
+    ap.Position = targetPos
+    ap.MaxForce = math.huge
+    ap.MaxVelocity = 100
+    ap.Responsiveness = 100
+    ap.ApplyAtCenterOfMass = true
+    ap.Parent = hrpNow
+    _alignAtt = att
+    _alignPos = ap
+end
+
+-- TpTween: usa AlignPosition para mover suavemente sem quebrar o servidor
+-- Para distâncias > 400: usa CFrame direto (único teleporte seguro para respawn)
+function TpTween(Pos)
+    local hrpNow = hrp()
+    if not hrpNow then return end
+    local char = LP.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+
+    local dist = (hrpNow.Position - Pos.Position).Magnitude
+
+    -- Distância muito grande: teleporte direto aceitável pelo servidor
+    if dist > 400 then
+        _clearAlign()
+        hrpNow.CFrame = Pos
+        return
+    end
+
+    if dist < 3 then return end
+
+    -- Move via AlignPosition (movimento físico real, não manipulação de CFrame)
+    _anchorHRP(Pos.Position)
+
+    -- Espera chegar ou timeout de 2.5s
+    local t0 = tick()
+    repeat
+        RunService.Heartbeat:Wait()
+        hrpNow = hrp()
+        if not hrpNow then break end
+    until not hrpNow
+        or (hrpNow.Position - Pos.Position).Magnitude < 3.5
+        or (tick() - t0) > 2.5
+
+    -- Finaliza a posição e remove o alinhamento
+    if hrpNow then
+        hrpNow.AssemblyLinearVelocity = Vector3.zero
+    end
+    _clearAlign()
+end
+
+-- TPInstant: mantém o CFrame direto para casos onde velocidade é crítica
+-- (ataque instantâneo, pull, boss)
+function TPInstant(Pos)
+    local hrpNow = hrp()
+    if not hrpNow then return end
+    local char = LP.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    _clearAlign()
+    hrpNow.AssemblyLinearVelocity = Vector3.zero
+    hrpNow.AssemblyAngularVelocity = Vector3.zero
+    hrpNow.CFrame = Pos
+end
+
+function TP(Pos)
+    if _G.SelectModeTP == "Instant" then
+        TPInstant(Pos)
+    else
+        TpTween(Pos)
+    end
+end
+
+-- ═══════════════════════════════════════════════════════
+-- SISTEMA DE ATAQUE AVANÇADO
+-- ═══════════════════════════════════════════════════════
+
+_G.ModeAT = "Above"
+_G.Adis = 20
+_G.MultiHitCount  = 3
+_G.AttackDelay    = 0
+_G.OrbitalAngle   = 0
+_G.OrbitalSpeed   = 45
+_G.PredictiveTP   = false
+_G.MultiHitMode   = false
+
+-- getAttackPos: retorna offset de posição relativa ao NPC (sem rotação que quebra o personagem)
+local function getAttackPos()
+    local mode = _G.ModeAT or "Above"
+    local d = _G.Adis or 20
+    if mode == "Above" then
+        -- Posição acima sem rotação no personagem
+        return CFrame.new(0, d, 0)
+    elseif mode == "Below" then
+        return CFrame.new(0, -d, 0)
+    elseif mode == "Behind" then
+        return CFrame.new(0, 0, d)
+    elseif mode == "Orbital" then
+        _G.OrbitalAngle = (_G.OrbitalAngle + (_G.OrbitalSpeed or 45)) % 360
+        local rad = math.rad(_G.OrbitalAngle)
+        return CFrame.new(math.sin(rad) * d, 2, math.cos(rad) * d)
+    elseif mode == "Random" then
+        local rad = math.rad(math.random(0, 359))
+        return CFrame.new(math.sin(rad) * d, math.random(-2, 4), math.cos(rad) * d)
+    else
+        return CFrame.new(0, 0, 0)
+    end
+end
+
+-- Calcula posição de destino com ou sem predição
+local function getPredictedCFrame(targetHRP)
+    local offset = getAttackPos()
+    if not _G.PredictiveTP or not targetHRP then
+        return targetHRP.CFrame * offset
+    end
+    local vel = targetHRP.AssemblyLinearVelocity
+    local predictedPos = targetHRP.CFrame + vel * 0.08
+    return predictedPos * offset
+end
+
+-- Aguarda o personagem estar suficientemente perto do destino
+-- Usado após TpTween para garantir que o ataque dispara no lugar certo
+local function WaitArrival(destPos, threshold, timeout)
+    threshold = threshold or 4
+    timeout = timeout or 0.4
+    local t0 = tick()
+    repeat
+        RunService.Heartbeat:Wait()
+        local h = hrp()
+        if not h then return false end
+        if (h.Position - destPos).Magnitude <= threshold then return true end
+    until (tick() - t0) >= timeout
+    return false
+end
+
+local function FastAttack(target, n)
+    if not target then return end
+    local hits = n or _G.MultiHitCount or 3
+    local delay = _G.AttackDelay or 0
+    for _ = 1, hits do
+        local cok = target:FindFirstChild("HumanoidRootPart")
+        if not cok then break end
+        local hum = target:FindFirstChild("Humanoid")
+        if not hum or hum.Health <= 0 then break end
+        local dest = getPredictedCFrame(cok)
+        -- FastAttack usa TPInstant pois precisa de velocidade máxima
+        TPInstant(dest)
+        CombatRemote:FireServer(cok.Position)
+        if delay > 0 then task.wait(delay) end
+    end
+end
+
+local function SmartAttack(target)
+    if not target then return end
+    local cok = target:FindFirstChild("HumanoidRootPart")
+    if not cok then return end
+    local hum = target:FindFirstChild("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+
+    if _G.MultiHitMode then
+        FastAttack(target, _G.MultiHitCount)
+        AktifSkill()
+        return
+    end
+
+    -- Se Pull estiver ativo, personagem fica parado: só ataca sem mover
+    if _G.PullEnabled then
+        CombatRemote:FireServer(cok.Position)
+        AktifSkill()
+        return
+    end
+
+    local destCF = getPredictedCFrame(cok)
+    local myHrp = hrp()
+    
+    -- Só teleporta se estiver longe (evita teleportes múltiplos desnecessários)
+    if myHrp and (myHrp.Position - destCF.Position).Magnitude > 5 then
+        TPInstant(destCF)
+        _anchorHRP(destCF.Position)
+    end
+
+    -- Re-checa alvo após teleporte
+    cok = target:FindFirstChild("HumanoidRootPart")
+    if not cok then _clearAlign() return end
+    hum = target:FindFirstChild("Humanoid")
+    if not hum or hum.Health <= 0 then _clearAlign() return end
+
+    CombatRemote:FireServer(cok.Position)
+    AktifSkill()
+end
+
+-- ═══════════════════════════════════════════════════════
+-- SISTEMA DE AGRUPAMENTO DE INIMIGOS (PULL)
+-- ═══════════════════════════════════════════════════════
+_G.PullEnabled     = false
+_G.PullRadius      = 80
+_G.PullMethod      = "WarpNPC"
+_G.PullDelay       = 0.3
+_G.PullFilterName  = ""
+
+local _pullAnchorCFrame = nil
+local _pullAnchorConn = nil
+
+local function myHRP()
+    local c = LP.Character
+    return c and c:FindFirstChild("HumanoidRootPart")
+end
+
+local function StartPullAnchor()
+    local h = myHRP()
+    if not h then return end
+    _pullAnchorCFrame = h.CFrame
+    if _pullAnchorConn then _pullAnchorConn:Disconnect() end
+    _pullAnchorConn = RunService.Heartbeat:Connect(function()
+        if not _G.PullEnabled or not _G.DRAGONHUB_ACTIVE then
+            if _pullAnchorConn then _pullAnchorConn:Disconnect() _pullAnchorConn = nil end
+            _pullAnchorCFrame = nil
+            return
+        end
+        local hrpNow = myHRP()
+        if hrpNow and _pullAnchorCFrame then
+            hrpNow.CFrame = _pullAnchorCFrame
+            hrpNow.AssemblyLinearVelocity = Vector3.zero
+            hrpNow.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+end
+
+local function StopPullAnchor()
+    if _pullAnchorConn then
+        _pullAnchorConn:Disconnect()
+        _pullAnchorConn = nil
+    end
+    _pullAnchorCFrame = nil
+end
+
+local function GetNearbyNPCs(radius, nameFilter)
+    local result = {}
+    local npcsFolder = workspace:FindFirstChild("NPCs")
+    if not npcsFolder then return result end
+    local h = myHRP()
+    if not h then return result end
+    local myPos = h.Position
+    local r = radius or _G.PullRadius or 80
+    for _, npc in ipairs(npcsFolder:GetChildren()) do
+        local hum = npc:FindFirstChild("Humanoid")
+        if not hum or hum.Health <= 0 then continue end
+        local npcHRP = npc:FindFirstChild("HumanoidRootPart")
+        if not npcHRP then continue end
+        if nameFilter and nameFilter ~= "" then
+            local n = npc.Name:lower():gsub("%d+",""):match("^%s*(.-)%s*$")
+            if not n:find(nameFilter:lower()) then continue end
+        end
+        local dist = (npcHRP.Position - myPos).Magnitude
+        if dist <= r then
+            table.insert(result, npc)
+        end
+    end
+    return result
+end
+
+local function PullMethod_WarpNPC(npcs)
+    -- WarpNPC pelo cliente não funciona (servidor controla NPC HRP)
+    -- Substituto: AggroAttack — visita cada NPC, dá um hit, volta
+    local h = myHRP()
+    if not h then return end
+    local origin = _pullAnchorCFrame or h.CFrame
+    for _, npc in ipairs(npcs) do
+        local npcHRP = npc:FindFirstChild("HumanoidRootPart")
+        local hum   = npc:FindFirstChild("Humanoid")
+        if not npcHRP or not hum or hum.Health <= 0 then continue end
+        pcall(function()
+            local dest = npcHRP.CFrame * CFrame.new(0, 0, 3)
+            TPInstant(dest)
+            CombatRemote:FireServer(npcHRP.Position)
+        end)
+        task.wait(0.05)
+    end
+    -- Volta para posição âncora
+    pcall(function() TPInstant(origin) end)
+end
+
+local function PullMethod_TeleportPlayer(npcs)
+    local origin = _pullAnchorCFrame or (myHRP() and myHRP().CFrame)
+    if not origin then return end
+    if _pullAnchorConn then _pullAnchorConn:Disconnect() _pullAnchorConn = nil end
+    for _, npc in ipairs(npcs) do
+        local npcHRP = npc:FindFirstChild("HumanoidRootPart")
+        if npcHRP then
+            pcall(function()
+                TPInstant(npcHRP.CFrame * CFrame.new(0, 0, 4))
+                task.wait(0.05)
+                CombatRemote:FireServer(npcHRP.Position)
+            end)
+        end
+    end
+    task.wait(0.05)
+    TPInstant(origin)
+    if _G.PullEnabled then
+        _pullAnchorCFrame = origin
+        _pullAnchorConn = RunService.Heartbeat:Connect(function()
+            if not _G.PullEnabled or not _G.DRAGONHUB_ACTIVE then
+                if _pullAnchorConn then _pullAnchorConn:Disconnect() _pullAnchorConn = nil end
+                return
+            end
+            local hrpNow = myHRP()
+            if hrpNow and _pullAnchorCFrame then
+                hrpNow.CFrame = _pullAnchorCFrame
+                hrpNow.AssemblyLinearVelocity = Vector3.zero
+                hrpNow.AssemblyAngularVelocity = Vector3.zero
+            end
+        end)
+    end
+end
+
+local function PullMethod_VelocityPush(npcs)
+    -- VelocityPush via cliente também é ignorado pelo servidor
+    -- Mesmo padrão: agro em cada NPC para forçar perseguição
+    local h = myHRP()
+    if not h then return end
+    local origin = _pullAnchorCFrame or h.CFrame
+    for _, npc in ipairs(npcs) do
+        local npcHRP = npc:FindFirstChild("HumanoidRootPart")
+        local hum   = npc:FindFirstChild("Humanoid")
+        if not npcHRP or not hum or hum.Health <= 0 then continue end
+        pcall(function()
+            local dest = npcHRP.CFrame * CFrame.new(0, 0, 3)
+            TPInstant(dest)
+            CombatRemote:FireServer(npcHRP.Position)
+        end)
+        task.wait(0.05)
+    end
+    pcall(function() TPInstant(origin) end)
+end
+
+local function DoPull()
+    local npcs = GetNearbyNPCs(_G.PullRadius, _G.PullFilterName)
+    if #npcs == 0 then return end
+    local method = _G.PullMethod or "WarpNPC"
+    if method == "WarpNPC" then
+        PullMethod_WarpNPC(npcs)
+    elseif method == "TeleportPlayer" then
+        PullMethod_TeleportPlayer(npcs)
+    elseif method == "VelocityPush" then
+        PullMethod_VelocityPush(npcs)
+    elseif method == "Combinado" then
+        -- Agro em todos + espera breve para eles começarem a perseguir
+        PullMethod_WarpNPC(npcs)
+        task.wait(0.1)
+    end
+end
+
+local TELEPORT_COOLDOWN = 1
+local CurrentBuild = nil
+local function LoadBuild(id)
+    if CurrentBuild == id then return end
+    CurrentBuild = id
+    LoadoutEvent:FireServer(id)
+end
+
+local lastCheck = 0
+local function CheckBuildByHP(target)
+    if not _G.AutoBuildSwitch then return end
+    if not target then return end
+    if tick() - lastCheck < 0.2 then return end
+    lastCheck = tick()
+    local hum = target:FindFirstChild("Humanoid")
+    if not hum then return end
+    local percent = (hum.Health / hum.MaxHealth) * 100
+    if percent <= _G.BuildThreshold then LoadBuild(_G.LuckBuild)
+    else LoadBuild(_G.DamageBuild) end
+end
+
+-- ── Loop de Ataque Instantâneo Contínuo ─────────────────────────
+_G.InstantAttackMode  = _G.InstantAttackMode  or false
+_G.InstantAttackSpeed = _G.InstantAttackSpeed or 0.1
+_G._InstantTarget     = nil
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        local speed = math.clamp(_G.InstantAttackSpeed or 0.1, 0.05, 2)
+        task.wait(speed)
+        pcall(function()
+            if not _G.InstantAttackMode then return end
+            local target = _G._InstantTarget
+            if not target or not target.Parent then _G._InstantTarget = nil return end
+            local hum = target:FindFirstChild("Humanoid")
+            if not hum or hum.Health <= 0 then _G._InstantTarget = nil return end
+            local cok = target:FindFirstChild("HumanoidRootPart")
+            if not cok then return end
+            CheckBuildByHP(target)
+            if _G.PullEnabled and _pullAnchorCFrame then
+                CombatRemote:FireServer(cok.Position)
+            else
+                TPInstant(getPredictedCFrame(cok))
+                CombatRemote:FireServer(cok.Position)
+            end
+            AktifSkill()
+        end)
+    end
+end)
+-- ────────────────────────────────────────────────────────────────
+
+-- ═══════════════════════════════════════════════════════
+-- MODO FÚRIA (EXPERIMENTAL) — Fire puro sem animação
+-- ═══════════════════════════════════════════════════════
+_G.RageMode        = false
+_G.RageModeTarget  = nil
+_G.RageFireRate    = 0
+_G.RageNoTP        = false  -- true = parado, só Fire na posição do NPC
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        RunService.Heartbeat:Wait()
+        if not _G.RageMode then continue end
+        pcall(function()
+            local target = _G.RageModeTarget
+            if not target or not target.Parent then _G.RageModeTarget = nil return end
+            local hum = target:FindFirstChild("Humanoid")
+            if not hum or hum.Health <= 0 then _G.RageModeTarget = nil return end
+            local cok = target:FindFirstChild("HumanoidRootPart")
+            if not cok then return end
+            if _G.RageNoTP then
+                -- Parado no lugar, manda a posição do NPC direto
+                CombatRemote:FireServer(cok.Position)
+            else
+                -- TP até o NPC e Fire
+                TPInstant(getPredictedCFrame(cok))
+                CombatRemote:FireServer(cok.Position)
+            end
+        end)
+        if (_G.RageFireRate or 0) > 0 then
+            task.wait(_G.RageFireRate)
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  RC HUB UI LIBRARY v2
+-- ═══════════════════════════════════════════════════════════════════════
+local _uis = game:GetService("UserInputService")
+local _ts  = game:GetService("TweenService")
+local _pg  = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+
+local C = {
+    bg=Color3.fromRGB(13,13,20), bg2=Color3.fromRGB(19,19,31),
+    bg3=Color3.fromRGB(26,26,42), bg4=Color3.fromRGB(34,34,53),
+    acc=Color3.fromRGB(200,0,0), acc2=Color3.fromRGB(230,50,50),
+    acc3=Color3.fromRGB(130,0,0),
+    on=Color3.fromRGB(45,190,90), off=Color3.fromRGB(42,42,66),
+    txt=Color3.fromRGB(232,232,255), txt2=Color3.fromRGB(144,144,184),
+    txt3=Color3.fromRGB(90,90,122), bdr=Color3.fromRGB(42,42,66),
+    cls=Color3.fromRGB(200,50,50), clsh=Color3.fromRGB(224,68,68),
+    sep=Color3.fromRGB(200,50,50), white=Color3.fromRGB(255,255,255),
+}
+local function _c(p,r) local x=Instance.new("UICorner") x.CornerRadius=UDim.new(0,r or 6) x.Parent=p end
+local function _s(p,t,col) local x=Instance.new("UIStroke") x.Thickness=t or 1 x.Color=col or C.bdr x.ApplyStrokeMode=Enum.ApplyStrokeMode.Border x.Parent=p end
+local function _tw(o,pr,t) _ts:Create(o,TweenInfo.new(t or 0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),pr):Play() end
+
+local _sg=Instance.new("ScreenGui")
+_sg.Name="DragonHUBUI" _sg.ResetOnSpawn=false _sg.ZIndexBehavior=Enum.ZIndexBehavior.Sibling _sg.IgnoreGuiInset=true _sg.Parent=_pg
+
+local W,H=420,320
+local HDR=36
+local SB=95
+local win=Instance.new("Frame")
+win.Name="Win" win.Size=UDim2.new(0,W,0,H)
+win.Position=UDim2.new(0.5,-W/2,0.5,-H/2)
+win.BackgroundColor3=C.bg win.BorderSizePixel=0 win.ClipsDescendants=true win.Parent=_sg
+_c(win,12) _s(win,1,C.bdr)
+
+local hdr=Instance.new("Frame")
+hdr.Name="Hdr" hdr.Size=UDim2.new(1,0,0,HDR)
+hdr.BackgroundColor3=C.bg2 hdr.BorderSizePixel=0 hdr.ZIndex=3 hdr.Parent=win
+_c(hdr,12)
+local hb=Instance.new("Frame") hb.Size=UDim2.new(1,0,0,14) hb.Position=UDim2.new(0,0,1,-14) hb.BackgroundColor3=C.bg2 hb.BorderSizePixel=0 hb.ZIndex=3 hb.Parent=hdr
+local hl=Instance.new("Frame") hl.Size=UDim2.new(1,0,0,1) hl.Position=UDim2.new(0,0,1,-1) hl.BackgroundColor3=C.acc3 hl.BorderSizePixel=0 hl.ZIndex=3 hl.Parent=hdr
+
+local ld=Instance.new("Frame") ld.Size=UDim2.new(0,8,0,8) ld.Position=UDim2.new(0,12,0.5,-4) ld.BackgroundColor3=C.acc ld.BorderSizePixel=0 ld.ZIndex=4 ld.Parent=hdr _c(ld,4)
+local tl=Instance.new("TextLabel") tl.Size=UDim2.new(0,100,1,0) tl.Position=UDim2.new(0,26,0,0) tl.BackgroundTransparency=1 tl.Text="DragonHUB" tl.TextColor3=C.txt tl.TextSize=13 tl.Font=Enum.Font.GothamBold tl.TextXAlignment=Enum.TextXAlignment.Left tl.ZIndex=4 tl.Parent=hdr
+local ok_info,_infoXXX=pcall(function() return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId) end)
+local _gameName = ok_info and _infoXXX and _infoXXX.Name or "Game"
+local tanggal = os.date("%d/%m/%Y")
+local infoXXX = ok_info and _infoXXX or {Name=_gameName}
+local gl=Instance.new("TextLabel") gl.Size=UDim2.new(1,-230,1,0) gl.Position=UDim2.new(0,130,0,0) gl.BackgroundTransparency=1 gl.Text=_gameName.." | "..tanggal gl.TextColor3=C.txt2 gl.TextSize=10 gl.Font=Enum.Font.Gotham gl.TextXAlignment=Enum.TextXAlignment.Left gl.ZIndex=4 gl.Parent=hdr
+
+local cb=Instance.new("TextButton") cb.Size=UDim2.new(0,26,0,20) cb.Position=UDim2.new(1,-34,0.5,-10) cb.BackgroundColor3=C.cls cb.BorderSizePixel=0 cb.Text="X" cb.TextColor3=C.white cb.TextSize=10 cb.Font=Enum.Font.GothamBold cb.AutoButtonColor=false cb.ZIndex=6 cb.Parent=hdr _c(cb,5)
+cb.MouseEnter:Connect(function() _tw(cb,{BackgroundColor3=C.clsh}) end)
+cb.MouseLeave:Connect(function() _tw(cb,{BackgroundColor3=C.cls}) end)
+cb.MouseButton1Click:Connect(function()
+    _G.DRAGONHUB_ACTIVE       = false
+    _G.StartingLevelingFARM   = false
+    _G.StartingAUfarm         = false
+    _G.FarmSelectBS           = false
+    _G.FarmWithptBS           = false
+    _G.FarmAllBS              = false
+    _G.FarmSUMMON             = false
+    _G.FarmSUMMONpity         = false
+    _G.FarmRAID               = false
+    _G.FarmlK                 = false
+    _G.FarmMK                 = false
+    _G.FarmGILGA              = false
+    _G.AutoCraftDG            = false
+    _G.PullEnabled            = false
+    _G.InstantAttackMode      = false
+    _G.AutoRerollRace         = false
+    _G.AutoRerollClan         = false
+    _G.StartGachaTRAIT        = false
+    _G.AutoBuyMerchant        = false
+    _G.FGDXX                  = false
+    _G.FGDZZ                  = false
+    _G.FGDZZXC                = false
+    _G.FGDSS                  = false
+    _G.infiJMP                = false
+    _G.AutoStatsMelee         = false
+    _G.AutoStatsDefense       = false
+    _G.AutoStatsSword         = false
+    _G.AutoStatsPower         = false
+    _G.AutoBuildSwitch        = false
+    _G.EV_BunnyFarm           = false
+    _G.EV_GreatMageFarm       = false
+    _G.EV_AutoSummon          = false
+    _clearAlign()
+    StopPullAnchor()
+    CFG_Save()
+    _sg:Destroy()
+end)
+
+local mb=Instance.new("TextButton") mb.Size=UDim2.new(0,26,0,20) mb.Position=UDim2.new(1,-66,0.5,-10) mb.BackgroundColor3=C.bg4 mb.BorderSizePixel=0 mb.Text="-" mb.TextColor3=C.txt mb.TextSize=12 mb.Font=Enum.Font.GothamBold mb.AutoButtonColor=false mb.ZIndex=6 mb.Parent=hdr _c(mb,5)
+local _mini=false
+mb.MouseButton1Click:Connect(function()
+    _mini=not _mini
+    _tw(win,{Size=_mini and UDim2.new(0,W,0,HDR) or UDim2.new(0,W,0,H)},0.2)
+end)
+
+local _drag,_ds,_sp=false,nil,nil
+hdr.InputBegan:Connect(function(inp)
+    if inp.UserInputType==Enum.UserInputType.MouseButton1 then
+        _drag=true _ds=inp.Position _sp=win.Position
+    end
+end)
+hdr.InputEnded:Connect(function(inp)
+    if inp.UserInputType==Enum.UserInputType.MouseButton1 then _drag=false end
+end)
+_uis.InputChanged:Connect(function(inp)
+    if _drag and inp.UserInputType==Enum.UserInputType.MouseMovement then
+        local d=inp.Position-_ds
+        win.Position=UDim2.new(_sp.X.Scale,_sp.X.Offset+d.X,_sp.Y.Scale,_sp.Y.Offset+d.Y)
+    end
+end)
+
+_uis.InputBegan:Connect(function(inp,gpe)
+    if gpe then return end
+    if inp.KeyCode==Enum.KeyCode.RightShift then _sg.Enabled=not _sg.Enabled end
+end)
+
+local body=Instance.new("Frame") body.Size=UDim2.new(1,0,1,-HDR) body.Position=UDim2.new(0,0,0,HDR) body.BackgroundTransparency=1 body.ClipsDescendants=true body.Parent=win
+
+local sb=Instance.new("ScrollingFrame")
+sb.Size=UDim2.new(0,SB,1,-22) sb.BackgroundColor3=C.bg2 sb.BorderSizePixel=0
+sb.ScrollBarThickness=2 sb.ScrollBarImageColor3=C.acc3
+sb.CanvasSize=UDim2.new(0,0,0,0) sb.AutomaticCanvasSize=Enum.AutomaticSize.Y
+sb.ElasticBehavior=Enum.ElasticBehavior.Never sb.Parent=body
+local sbp=Instance.new("UIPadding") sbp.PaddingTop=UDim.new(0,6) sbp.PaddingBottom=UDim.new(0,6) sbp.PaddingLeft=UDim.new(0,5) sbp.PaddingRight=UDim.new(0,5) sbp.Parent=sb
+local sbl=Instance.new("UIListLayout") sbl.FillDirection=Enum.FillDirection.Vertical sbl.Padding=UDim.new(0,2) sbl.HorizontalAlignment=Enum.HorizontalAlignment.Center sbl.SortOrder=Enum.SortOrder.LayoutOrder sbl.Parent=sb
+local sbb=Instance.new("Frame") sbb.Size=UDim2.new(0,1,1,0) sbb.Position=UDim2.new(0,SB,0,0) sbb.BackgroundColor3=C.acc3 sbb.BorderSizePixel=0 sbb.Parent=body
+
+local mp=Instance.new("Frame") mp.Size=UDim2.new(1,-SB,1,-22) mp.Position=UDim2.new(0,SB,0,0) mp.BackgroundColor3=C.bg3 mp.BorderSizePixel=0 mp.ClipsDescendants=true mp.Parent=body
+
+local stb=Instance.new("Frame") stb.Size=UDim2.new(1,0,0,22) stb.Position=UDim2.new(0,0,1,-22) stb.BackgroundColor3=C.bg2 stb.BorderSizePixel=0 stb.ZIndex=2 stb.Parent=win
+local stl=Instance.new("TextLabel") stl.Size=UDim2.new(1,-10,1,0) stl.BackgroundTransparency=1 stl.Text="DragonHUB  |  Shift Direito = mostrar/ocultar  |  Feito por DragonHUB" stl.TextColor3=C.txt3 stl.TextSize=9 stl.Font=Enum.Font.Gotham stl.TextXAlignment=Enum.TextXAlignment.Right stl.Parent=stb
+
+local function dragonhub(msg)
+    local nf=Instance.new("Frame") nf.Size=UDim2.new(0,290,0,60) nf.Position=UDim2.new(1,10,1,10) nf.BackgroundColor3=C.bg2 nf.BorderSizePixel=0 nf.ZIndex=200 nf.Parent=win _c(nf,8) _s(nf,1,C.bdr)
+    local na=Instance.new("Frame") na.Size=UDim2.new(0,4,1,0) na.BackgroundColor3=C.acc na.BorderSizePixel=0 na.ZIndex=201 na.Parent=nf _c(na,4)
+    local nt=Instance.new("TextLabel") nt.Size=UDim2.new(1,-20,0,20) nt.Position=UDim2.new(0,14,0,5) nt.BackgroundTransparency=1 nt.Text="DragonHUB" nt.TextColor3=C.txt nt.TextSize=11 nt.Font=Enum.Font.GothamBold nt.TextXAlignment=Enum.TextXAlignment.Left nt.ZIndex=201 nt.Parent=nf
+    local nc=Instance.new("TextLabel") nc.Size=UDim2.new(1,-20,0,32) nc.Position=UDim2.new(0,14,0,24) nc.BackgroundTransparency=1 nc.Text=tostring(msg) nc.TextColor3=C.txt2 nc.TextSize=10 nc.Font=Enum.Font.Gotham nc.TextXAlignment=Enum.TextXAlignment.Left nc.TextWrapped=true nc.ZIndex=201 nc.Parent=nf
+    _tw(nf,{Position=UDim2.new(1,-300,1,-80)},0.3)
+    task.delay(4,function() _tw(nf,{Position=UDim2.new(1,10,1,10)},0.3) task.wait(0.35) nf:Destroy() end)
+end
+
+local _tabs={}
+local _active=nil
+
+local function _selectTab(t)
+    if _active==t then return end
+    if _active then
+        _tw(_active._btn,{BackgroundColor3=C.bg3})
+        _active._btn.TextColor3=C.txt2
+        _active._scroll.Visible=false
+    end
+    _active=t
+    _tw(t._btn,{BackgroundColor3=C.acc})
+    t._btn.TextColor3=C.white
+    t._scroll.Visible=true
+end
+
+local function _nextOrder(tab)
+    tab._order=tab._order+1
+    return tab._order
+end
+
+local function _makeRow(tab,h,transp)
+    local f=Instance.new("Frame")
+    f.Size=UDim2.new(1,0,0,h or 34)
+    f.BackgroundColor3=C.bg4
+    f.BackgroundTransparency=transp and 1 or 0
+    f.BorderSizePixel=0
+    f.LayoutOrder=_nextOrder(tab)
+    f.ClipsDescendants=false
+    f.Parent=tab._scroll
+    _c(f,7)
+    if not transp then _s(f,1,C.bdr) end
+    return f
+end
+
+local function _addSep(tab, name)
+    local f=Instance.new("Frame") f.Size=UDim2.new(1,0,0,24) f.BackgroundTransparency=1 f.BorderSizePixel=0 f.LayoutOrder=_nextOrder(tab) f.Parent=tab._scroll
+    local ll=Instance.new("Frame") ll.Size=UDim2.new(0.25,-4,0,1) ll.Position=UDim2.new(0,0,0.5,0) ll.BackgroundColor3=C.acc3 ll.BorderSizePixel=0 ll.Parent=f
+    local lb=Instance.new("TextLabel") lb.Size=UDim2.new(0.5,0,1,0) lb.Position=UDim2.new(0.25,0,0,0) lb.BackgroundTransparency=1 lb.Text=tostring(name) lb.TextColor3=C.sep lb.TextSize=9 lb.Font=Enum.Font.GothamBold lb.TextXAlignment=Enum.TextXAlignment.Center lb.Parent=f
+    local lr=Instance.new("Frame") lr.Size=UDim2.new(0.25,-4,0,1) lr.Position=UDim2.new(0.75,4,0.5,0) lr.BackgroundColor3=C.acc3 lr.BorderSizePixel=0 lr.Parent=f
+end
+
+local function _addParagraph(tab, opts)
+    local f=Instance.new("Frame") f.Size=UDim2.new(1,0,0,0) f.AutomaticSize=Enum.AutomaticSize.Y f.BackgroundColor3=C.bg4 f.BorderSizePixel=0 f.LayoutOrder=_nextOrder(tab) f.Parent=tab._scroll _c(f,7) _s(f,1,C.bdr)
+    local pad=Instance.new("UIPadding") pad.PaddingLeft=UDim.new(0,8) pad.PaddingRight=UDim.new(0,8) pad.PaddingTop=UDim.new(0,6) pad.PaddingBottom=UDim.new(0,6) pad.Parent=f
+    local fl=Instance.new("UIListLayout") fl.FillDirection=Enum.FillDirection.Vertical fl.Padding=UDim.new(0,3) fl.Parent=f
+    local tll=Instance.new("TextLabel") tll.Size=UDim2.new(1,0,0,0) tll.AutomaticSize=Enum.AutomaticSize.Y tll.BackgroundTransparency=1 tll.Text=opts.Title or "" tll.TextColor3=C.acc2 tll.TextSize=10 tll.Font=Enum.Font.GothamBold tll.TextXAlignment=Enum.TextXAlignment.Left tll.TextWrapped=true tll.RichText=true tll.Parent=f
+    local cll=Instance.new("TextLabel") cll.Size=UDim2.new(1,0,0,0) cll.AutomaticSize=Enum.AutomaticSize.Y cll.BackgroundTransparency=1 cll.Text=opts.Content or "" cll.TextColor3=C.txt2 cll.TextSize=10 cll.Font=Enum.Font.Gotham cll.TextXAlignment=Enum.TextXAlignment.Left cll.TextWrapped=true cll.RichText=true cll.Parent=f
+    return {SetContent=function(_,v) cll.Text=tostring(v or "") end}
+end
+
+local function _addToggle(tab, opts)
+    local state=(opts.Default==true)
+    local row=_makeRow(tab,34)
+    local lbl=Instance.new("TextLabel") lbl.Size=UDim2.new(1,-52,1,0) lbl.Position=UDim2.new(0,10,0,0) lbl.BackgroundTransparency=1 lbl.Text=opts.Title or "" lbl.TextColor3=C.txt lbl.TextSize=11 lbl.Font=Enum.Font.Gotham lbl.TextXAlignment=Enum.TextXAlignment.Left lbl.TextWrapped=true lbl.Parent=row
+    local pill=Instance.new("Frame") pill.Size=UDim2.new(0,36,0,18) pill.Position=UDim2.new(1,-44,0.5,-9) pill.BackgroundColor3=state and C.on or C.off pill.BorderSizePixel=0 pill.Parent=row _c(pill,9)
+    local knob=Instance.new("Frame") knob.Size=UDim2.new(0,14,0,14) knob.Position=state and UDim2.new(1,-16,0.5,-7) or UDim2.new(0,2,0.5,-7) knob.BackgroundColor3=C.white knob.BorderSizePixel=0 knob.Parent=pill _c(knob,7)
+    local hit=Instance.new("TextButton") hit.Size=UDim2.new(1,0,1,0) hit.BackgroundTransparency=1 hit.Text="" hit.ZIndex=4 hit.Parent=row
+    local function refresh() _tw(pill,{BackgroundColor3=state and C.on or C.off}) knob.Position=state and UDim2.new(1,-16,0.5,-7) or UDim2.new(0,2,0.5,-7) end
+    hit.MouseButton1Click:Connect(function() state=not state refresh() if opts.Callback then pcall(opts.Callback,state) end end)
+    if opts.Callback and state then pcall(opts.Callback,state) end
+    return {SetValue=function(_,v) state=v refresh() if opts.Callback then pcall(opts.Callback,state) end end}
+end
+
+local function _addButton(tab, opts)
+    local row=_makeRow(tab,34)
+    local b=Instance.new("TextButton") b.Size=UDim2.new(1,-16,0,26) b.Position=UDim2.new(0,8,0.5,-13) b.BackgroundColor3=C.acc b.BorderSizePixel=0 b.Text=opts.Title or "" b.TextColor3=C.white b.TextSize=11 b.Font=Enum.Font.GothamBold b.AutoButtonColor=false b.ZIndex=4 b.Parent=row _c(b,6)
+    b.MouseEnter:Connect(function() _tw(b,{BackgroundColor3=C.acc2}) end) b.MouseLeave:Connect(function() _tw(b,{BackgroundColor3=C.acc}) end)
+    b.MouseButton1Down:Connect(function() _tw(b,{BackgroundColor3=C.acc3},0.05) end) b.MouseButton1Up:Connect(function() _tw(b,{BackgroundColor3=C.acc},0.05) end)
+    b.MouseButton1Click:Connect(function() if opts.Callback then pcall(opts.Callback) end end)
+end
+
+local function _addSlider(tab, opts)
+    local minV=opts.Min or 0 local maxV=opts.Max or 100 local step=opts.Increment or 1
+    local value=math.clamp(opts.Default or minV,minV,maxV)
+    local range=math.max(maxV-minV,1)
+    local row=_makeRow(tab,50)
+    local lbl=Instance.new("TextLabel") lbl.Size=UDim2.new(1,-10,0,18) lbl.Position=UDim2.new(0,8,0,4) lbl.BackgroundTransparency=1 lbl.Text=(opts.Title or "")..":  "..tostring(value) lbl.TextColor3=C.txt lbl.TextSize=11 lbl.Font=Enum.Font.Gotham lbl.TextXAlignment=Enum.TextXAlignment.Left lbl.Parent=row
+    local track=Instance.new("Frame") track.Size=UDim2.new(1,-18,0,6) track.Position=UDim2.new(0,9,0,30) track.BackgroundColor3=C.off track.BorderSizePixel=0 track.Parent=row _c(track,3)
+    local p0=(value-minV)/range
+    local fill=Instance.new("Frame") fill.Size=UDim2.new(p0,0,1,0) fill.BackgroundColor3=C.acc fill.BorderSizePixel=0 fill.Parent=track _c(fill,3)
+    local knob=Instance.new("Frame") knob.Size=UDim2.new(0,18,0,18) knob.AnchorPoint=Vector2.new(0.5,0.5) knob.Position=UDim2.new(p0,0,0.5,0) knob.BackgroundColor3=C.white knob.BorderSizePixel=0 knob.ZIndex=4 knob.Parent=track _c(knob,9)
+    local drag2=false
+    local hit2=Instance.new("TextButton") hit2.Size=UDim2.new(1,0,5,0) hit2.Position=UDim2.new(0,0,0,-10) hit2.BackgroundTransparency=1 hit2.Text="" hit2.ZIndex=5 hit2.Parent=track
+    local function upd(mx)
+        local ax=track.AbsolutePosition.X local aw=track.AbsoluteSize.X
+        local pct=math.clamp((mx-ax)/math.max(aw,1),0,1)
+        value=math.floor(minV+pct*range/step+0.5)*step value=math.clamp(value,minV,maxV)
+        local v2=(value-minV)/range fill.Size=UDim2.new(v2,0,1,0) knob.Position=UDim2.new(v2,0,0.5,0)
+        lbl.Text=(opts.Title or "")..":  "..tostring(value)
+        if opts.Callback then pcall(opts.Callback,value) end
+    end
+    hit2.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then drag2=true upd(i.Position.X) end end)
+    hit2.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then drag2=false end end)
+    _uis.InputChanged:Connect(function(i) if drag2 and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then upd(i.Position.X) end end)
+    if opts.Callback then pcall(opts.Callback,value) end
+end
+
+local function _addDropdown(tab, opts)
+    local options=opts.Options or {} local isMulti=opts.Multi==true
+    local selected=isMulti and {} or tostring(options[1] or "")
+    local open=false
+    local container=Instance.new("Frame") container.Size=UDim2.new(1,0,0,34) container.BackgroundColor3=C.bg4 container.BorderSizePixel=0 container.ClipsDescendants=false container.ZIndex=5 container.LayoutOrder=_nextOrder(tab) container.Parent=tab._scroll _c(container,7) _s(container,1,C.bdr)
+    local function getLabel() if isMulti then local t={} for k in pairs(selected) do table.insert(t,k) end return #t>0 and table.concat(t,", ") or "None" else return tostring(selected) end end
+    local hdd=Instance.new("TextButton") hdd.Size=UDim2.new(1,0,0,34) hdd.BackgroundTransparency=1 hdd.BorderSizePixel=0 hdd.Text="v  "..(opts.Title or "")..":  "..getLabel() hdd.TextColor3=C.txt hdd.TextSize=11 hdd.Font=Enum.Font.Gotham hdd.TextXAlignment=Enum.TextXAlignment.Left hdd.AutoButtonColor=false hdd.ZIndex=6 hdd.Parent=container
+    local hdp=Instance.new("UIPadding") hdp.PaddingLeft=UDim.new(0,8) hdp.Parent=hdd
+    local of=Instance.new("Frame") of.Size=UDim2.new(1,0,0,0) of.Position=UDim2.new(0,0,0,34) of.BackgroundColor3=C.bg2 of.BorderSizePixel=0 of.ClipsDescendants=true of.ZIndex=20 of.Visible=false of.Parent=container _c(of,6) _s(of,1,C.bdr)
+    local op2=Instance.new("UIPadding") op2.PaddingTop=UDim.new(0,3) op2.PaddingBottom=UDim.new(0,3) op2.PaddingLeft=UDim.new(0,3) op2.PaddingRight=UDim.new(0,3) op2.Parent=of
+    local ol=Instance.new("UIListLayout") ol.FillDirection=Enum.FillDirection.Vertical ol.Padding=UDim.new(0,2) ol.Parent=of
+    local function buildOpts(opts2)
+        for _,ch in ipairs(of:GetChildren()) do if ch:IsA("TextButton") then ch:Destroy() end end
+        for _,opt in ipairs(opts2) do
+            local ob=Instance.new("TextButton") ob.Size=UDim2.new(1,0,0,26) ob.BackgroundColor3=C.bg3 ob.BorderSizePixel=0 ob.Text=tostring(opt) ob.TextColor3=C.txt ob.TextSize=11 ob.Font=Enum.Font.Gotham ob.TextXAlignment=Enum.TextXAlignment.Left ob.AutoButtonColor=false ob.ZIndex=21 ob.Parent=of _c(ob,5)
+            local op3=Instance.new("UIPadding") op3.PaddingLeft=UDim.new(0,8) op3.Parent=ob
+            ob.MouseEnter:Connect(function() _tw(ob,{BackgroundColor3=C.bg4}) end) ob.MouseLeave:Connect(function() _tw(ob,{BackgroundColor3=C.bg3}) end)
+            ob.MouseButton1Click:Connect(function()
+                if isMulti then
+                    local k=tostring(opt)
+                    if selected[k] then selected[k]=nil ob.TextColor3=C.txt else selected[k]=true ob.TextColor3=C.acc2 end
+                    hdd.Text="v  "..(opts.Title or "")..":  "..getLabel()
+                    if opts.Callback then local arr={} for kk in pairs(selected) do table.insert(arr,kk) end pcall(opts.Callback,arr) end
+                else
+                    selected=tostring(opt) hdd.Text="v  "..(opts.Title or "")..":  "..selected
+                    open=false of.Visible=false container.Size=UDim2.new(1,0,0,34)
+                    if opts.Callback then pcall(opts.Callback,selected) end
+                end
+            end)
+        end
+        of.Size=UDim2.new(1,0,0,#opts2*28+6)
+    end
+    buildOpts(options)
+    hdd.MouseButton1Click:Connect(function()
+        open=not open of.Visible=open
+        container.Size=open and UDim2.new(1,0,0,34+#options*28+6) or UDim2.new(1,0,0,34)
+    end)
+    if opts.Callback and not isMulti and options[1] then pcall(opts.Callback,selected) end
+    return {
+        SetValues=function(_,newOpts)
+            options=newOpts or {} selected=isMulti and {} or tostring(options[1] or "")
+            hdd.Text="v  "..(opts.Title or "")..":  "..(isMulti and "None" or selected)
+            buildOpts(options)
+        end,
+        Set=function(_,v) selected=v hdd.Text="v  "..(opts.Title or "")..":  "..tostring(v) end
+    }
+end
+
+local function _addInput(tab, opts)
+    local row=_makeRow(tab,50)
+    local lbl=Instance.new("TextLabel") lbl.Size=UDim2.new(1,-10,0,18) lbl.Position=UDim2.new(0,8,0,3) lbl.BackgroundTransparency=1 lbl.Text=opts.Title or "" lbl.TextColor3=C.txt lbl.TextSize=11 lbl.Font=Enum.Font.Gotham lbl.TextXAlignment=Enum.TextXAlignment.Left lbl.Parent=row
+    local box=Instance.new("TextBox") box.Size=UDim2.new(1,-16,0,22) box.Position=UDim2.new(0,8,0,24) box.BackgroundColor3=C.bg3 box.BorderSizePixel=0 box.Text=tostring(opts.Default or opts.Value or "") box.PlaceholderText="Digite aqui..." box.PlaceholderColor3=C.txt3 box.TextColor3=C.txt box.TextSize=11 box.Font=Enum.Font.Gotham box.TextXAlignment=Enum.TextXAlignment.Left box.ZIndex=4 box.Parent=row _c(box,5) _s(box,1,C.bdr)
+    box.FocusLost:Connect(function(enter) if enter and opts.Callback then pcall(opts.Callback,box.Text) end end)
+end
+
+local function _addDivider(tab)
+    local f=Instance.new("Frame") f.Size=UDim2.new(1,0,0,8) f.BackgroundTransparency=1 f.LayoutOrder=_nextOrder(tab) f.Parent=tab._scroll
+    local ln=Instance.new("Frame") ln.Size=UDim2.new(1,-10,0,1) ln.Position=UDim2.new(0,5,0.5,0) ln.BackgroundColor3=C.bdr ln.BorderSizePixel=0 ln.Parent=f
+end
+
+local function _makeTab(name)
+    local btn=Instance.new("TextButton")
+    btn.Size=UDim2.new(1,0,0,32) btn.BackgroundColor3=C.bg3 btn.BorderSizePixel=0
+    btn.Text=name btn.TextColor3=C.txt2 btn.TextSize=10 btn.Font=Enum.Font.Gotham
+    btn.TextXAlignment=Enum.TextXAlignment.Left btn.AutoButtonColor=false
+    btn.LayoutOrder=#_tabs+1 btn.Parent=sb _c(btn,7)
+    local bp=Instance.new("UIPadding") bp.PaddingLeft=UDim.new(0,10) bp.Parent=btn
+    btn.MouseEnter:Connect(function() if not(_active and _active._btn==btn) then _tw(btn,{BackgroundColor3=C.bg4}) end end)
+    btn.MouseLeave:Connect(function() if not(_active and _active._btn==btn) then _tw(btn,{BackgroundColor3=C.bg3}) end end)
+
+    local scroll=Instance.new("ScrollingFrame")
+    scroll.Name="Sc_"..name scroll.Size=UDim2.new(1,0,1,0)
+    scroll.BackgroundTransparency=1 scroll.BorderSizePixel=0
+    scroll.ScrollBarThickness=3 scroll.ScrollBarImageColor3=C.acc3
+    scroll.CanvasSize=UDim2.new(0,0,0,0) scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
+    scroll.ElasticBehavior=Enum.ElasticBehavior.Never scroll.Visible=false scroll.Parent=mp
+    local sp2=Instance.new("UIPadding") sp2.PaddingTop=UDim.new(0,8) sp2.PaddingBottom=UDim.new(0,8) sp2.PaddingLeft=UDim.new(0,8) sp2.PaddingRight=UDim.new(0,10) sp2.Parent=scroll
+    local sl2=Instance.new("UIListLayout") sl2.FillDirection=Enum.FillDirection.Vertical sl2.Padding=UDim.new(0,4) sl2.HorizontalAlignment=Enum.HorizontalAlignment.Center sl2.SortOrder=Enum.SortOrder.LayoutOrder sl2.Parent=scroll
+
+    local tab={_btn=btn,_scroll=scroll,_order=0}
+    btn.MouseButton1Click:Connect(function() _selectTab(tab) end)
+    table.insert(_tabs,tab)
+    if #_tabs==1 then _active=tab btn.BackgroundColor3=C.acc btn.TextColor3=C.white scroll.Visible=true end
+    return tab
+end
+
+local function _makeSection(tab, secName)
+    if secName and secName~="" then _addSep(tab, secName) end
+    local sec={}
+    sec.AddToggle    = function(_,o) return _addToggle(tab,o) end
+    sec.AddButton    = function(_,o) return _addButton(tab,o) end
+    sec.AddSlider    = function(_,o) return _addSlider(tab,o) end
+    sec.AddDropdown  = function(_,o) return _addDropdown(tab,o) end
+    sec.AddParagraph = function(_,o) return _addParagraph(tab,o) end
+    sec.AddInput     = function(_,o) return _addInput(tab,o) end
+    sec.AddDivider   = function(_)   return _addDivider(tab) end
+    sec.AddSection   = function(_,n,_2) return _makeSection(tab, type(n)=="string" and n or (type(n)=="table" and n.Name or "")) end
+    return sec
+end
+
+local v162={}
+v162.AddTab=function(_,opts)
+    local tab=_makeTab(opts.Name or "Tab")
+    local wrapper={}
+    wrapper.AddSection=function(_2,name2,_3) return _makeSection(tab, type(name2)=="string" and name2 or "") end
+    wrapper.AddToggle    = function(_2,o) return _addToggle(tab,o) end
+    wrapper.AddButton    = function(_2,o) return _addButton(tab,o) end
+    wrapper.AddSlider    = function(_2,o) return _addSlider(tab,o) end
+    wrapper.AddDropdown  = function(_2,o) return _addDropdown(tab,o) end
+    wrapper.AddParagraph = function(_2,o) return _addParagraph(tab,o) end
+    wrapper.AddInput     = function(_2,o) return _addInput(tab,o) end
+    wrapper.AddDivider   = function(_2)   return _addDivider(tab) end
+    return wrapper
+end
+
+dragonhub("Carregando Script, Aguarde...")
+
+local v163 = {
+    farm    = v162:AddTab({ Name = "Farm" }),
+    setting = v162:AddTab({ Name = "Config" }),
+    thr     = v162:AddTab({ Name = "Limiar" }),
+    stats   = v162:AddTab({ Name = "Atributos" }),
+    bs      = v162:AddTab({ Name = "Boss" }),
+    ts      = v162:AddTab({ Name = "Diversos" }),
+    trade   = v162:AddTab({ Name = "Troca" }),
+    dungeon = v162:AddTab({ Name = "Masmorra" }),
+    tp      = v162:AddTab({ Name = "Teleporte" }),
+    ev      = v162:AddTab({ Name = "Eventos" }),
+    exp     = v162:AddTab({ Name = "⚗️ EXP" }),
+}
+
+-- ═══════════════════════════════════════════════════════
+-- FARM
+-- ═══════════════════════════════════════════════════════
+Fish1 = v163.farm:AddSection("Suporte ao Jogador", true)
+Fish1:AddToggle({ Title = "Haki Automático", Default = CFG_Get("FGDXX", false), Callback = function(state) _G.FGDXX = state CFG_Save() end })
+Fish1:AddToggle({ Title = "Observação Automática", Default = CFG_Get("FGDZZ", false), Callback = function(state) _G.FGDZZ = state CFG_Save() end })
+Fish1:AddToggle({ Title = "Conquistador Automático", Default = CFG_Get("FGDZZXC", false), Callback = function(state) _G.FGDZZXC = state CFG_Save() end })
+Fish1:AddToggle({ Title = "Hack de Velocidade", Default = CFG_Get("FGDSS", false), Callback = function(state) _G.FGDSS = state CFG_Save() end })
+Fish1:AddToggle({ Title = "Pulo Infinito", Default = CFG_Get("infiJMP", false), Callback = function(state) _G.infiJMP = state CFG_Save() end })
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.5)
+        local ok,err = pcall(function()
+            if _G.FGDXX then
+                if IsBusoActive() == false then
+                    game:GetService("ReplicatedStorage").RemoteEvents.HakiRemote:FireServer("Toggle")
+                end
+            end
+        end)
+        if not ok then warn("[Haki] " .. tostring(err)) end
+    end
+end)
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(1)
+        local ok,err = pcall(function()
+            if _G.FGDZZXC then
+                game:GetService("ReplicatedStorage").RemoteEvents.ConquerorHakiRemote:FireServer()
+            end
+        end)
+        if not ok then warn("[Conquistador] " .. tostring(err)) end
+    end
+end)
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.5)
+        local ok,err = pcall(function()
+            if _G.FGDZZ then
+                if game:GetService("Players").LocalPlayer.PlayerGui.DodgeCounterUI.MainFrame.Visible == false then
+                    game:GetService("ReplicatedStorage").RemoteEvents.ObservationHakiRemote:FireServer("Toggle")
+                end
+            end
+        end)
+        if not ok then warn("[Observação] " .. tostring(err)) end
+    end
+end)
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.3)
+        local ok,err = pcall(function()
+            if _G.FGDSS then
+                local char = player.Character
+                if char then
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.WalkSpeed ~= 160 then hum.WalkSpeed = 160 end
+                end
+            end
+        end)
+        if not ok then warn("[Speed] " .. tostring(err)) end
+    end
+end)
+
+local UIS = game:GetService("UserInputService")
+if not UIS.TouchEnabled then
+    UIS.JumpRequest:Connect(function()
+        pcall(function()
+            if _G.infiJMP and _G.DRAGONHUB_ACTIVE then
+                local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+            end
+        end)
+    end)
+end
+
+Fish2 = v163.farm:AddSection("Farm de Nível")
+Fish2:AddParagraph({
+    Title = "-[ INFORMAÇÕES ]-",
+    Content = "Este modo inicia o Farm Automático do nível 1 até o nível máximo.\nAntes de iniciar, configure sua Arma e o Método de Farm na aba Configurações.\n\nENCONTROU BUG? ENTRE NO DISCORD !!"
+})
+Fish2:AddToggle({ Title = "Farm Automático Nível Máximo", Default = false, Callback = function(state) _G.StartingLevelingFARM = state end })
+
+Fish2 = v163.farm:AddSection("Farm de Mob Selecionado")
+local selectedNPCs = {}
+local npcDropdown = Fish2:AddDropdown({
+    Title = "Selecionar NPC", Options = getNPC(true), Default = "None", Multi = true,
+    Callback = function(value)
+        if type(value) == "string" then selectedNPCs = { value } else selectedNPCs = value end
+    end
+})
+Fish2:AddButton({
+    Title = "Atualizar NPCs",
+    Callback = function() npcDropdown:SetValues(getNPC(true)) end
+})
+Fish2:AddToggle({ Title = "Farm Automático", Default = false, Callback = function(state) _G.StartingAUfarm = state end })
+Fish2:AddToggle({ Title = "Pegar Quest Automático", Default = false, Callback = function(state) _G.StartQuest = state end })
+
+-- ═══════════════════════════════════════════════════════
+-- CONFIGURAÇÕES
+-- ═══════════════════════════════════════════════════════
+Fish3 = v163.setting:AddSection("Arma e Método", true)
+local npcDropdownXX = Fish3:AddDropdown({
+    Title = "Selecionar Arma", Options = getAllWeapons(), Default = 1, Multi = false,
+    Callback = function(Option) selectedWeapon = Option end
+})
+Fish3:AddButton({ Title = "Atualizar Armas", Callback = function() npcDropdownXX:SetValues(getAllWeapons()) end })
+Fish3:AddToggle({ Title = "Equipar Arma Automático", Default = CFG_Get("EquiD", false), Callback = function(state) _G.EquiD = state CFG_Save() end })
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.5)
+        pcall(function()
+            if _G.EquiD and selectedWeapon then equipWeapon(selectedWeapon) end
+        end)
+    end
+end)
+Fish3:AddDropdown({ Title = "Selecionar Método", Options = {"Above","Behind","Below"}, Default = "Above", Multi = false, Callback = function(Option) _G.ModeAT = Option end })
+Fish3:AddDropdown({ Title = "Método de Teleporte", Options = {"Tween","Instant"}, Default = "Tween", Multi = false, Callback = function(Option) _G.SelectModeTP = Option end })
+Fish3:AddSlider({ Title = "Cooldown de Teleporte", Min = 1, Max = 10, Default = TELEPORT_COOLDOWN, Increment = 1, Callback = function(value) TELEPORT_COOLDOWN = value end })
+Fish3:AddSlider({ Title = "Velocidade do Tween", Min = 1, Max = 360, Default = _G.SpeedTweenS, Increment = 1, Callback = function(value) _G.SpeedTweenS = value end })
+Fish3:AddSlider({ Title = "Distância de Farm", Min = 1, Max = 150, Default = 20, Increment = 1, Callback = function(value) _G.Adis = value end })
+Fish3:AddToggle({ Title = "Sem Colisão", Default = true, Callback = function(Value) SetNoclip(Value) end })
+Fish3:AddToggle({ Title = "Melhorar FPS", Default = false, Callback = function(Value) if Value then BoostFps() end end })
+Fish3:AddToggle({
+    Title = "Deletar Ilhas",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            local islandNames = {"AcademyIsland","BossIsland","DesertIsland","HuecoMundo","JudgementIsland","JungleIsland","SailorIsland","ShibuyaStation","ShinjukuIsland","SlimeIsland","SnowIsland","SoulSocietyIsland","StarterIsland"}
+            for _, name in ipairs(islandNames) do
+                local island = workspace:FindFirstChild(name)
+                if island then island:Destroy() end
+            end
+        end
+    end
+})
+Fish3:AddToggle({
+    Title = "Ascensão Automática",
+    Default = false,
+    Callback = function(Value)
+        _G.Ascend = Value
+        if Value then
+            task.spawn(function()
+                while _G.Ascend and _G.DRAGONHUB_ACTIVE do
+                    pcall(function() game:GetService("ReplicatedStorage").RemoteEvents.RequestAscend:FireServer() end)
+                    task.wait(10)
+                end
+            end)
+        end
+    end
+})
+Fish3:AddButton({
+    Title = "Resgatar Código",
+    Callback = function()
+        local CodesModule = require(game:GetService("ReplicatedStorage"):WaitForChild("CodesConfig"))
+        local Remote = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents"):WaitForChild("CodeRedeem")
+        for codeName, data in pairs(CodesModule.Codes) do
+            task.spawn(function()
+                pcall(function()
+                    if CodesModule.IsValid(codeName) then Remote:InvokeServer(codeName) end
+                end)
+            end)
+            task.wait(0.3)
+        end
+    end
+})
+Fish3:AddDivider()
+Fish3 = v163.setting:AddSection("Ataque Avançado", true)
+Fish3:AddParagraph({
+    Title = "-[ ATAQUE AVANÇADO ]-",
+    Content = "Multi-Hit: dispara vários hits por ciclo, muito mais rápido.\nOrbital: rotaciona ao redor do alvo a cada hit.\nRandom: posição aleatória por hit.\nPreditivo: prevê posição do alvo em movimento."
+})
+Fish3:AddDropdown({
+    Title = "Modo de Posição",
+    Options = {"Above","Behind","Below","Orbital","Random"},
+    Default = "Above",
+    Multi = false,
+    Callback = function(opt) _G.ModeAT = opt end
+})
+Fish3:AddSlider({ Title = "Multi-Hit por Ciclo", Min = 1, Max = 10, Default = 3, Increment = 1, Callback = function(v) _G.MultiHitCount = v end })
+Fish3:AddSlider({ Title = "Delay Entre Hits (x0.01s)", Min = 0, Max = 10, Default = 0, Increment = 1, Callback = function(v) _G.AttackDelay = v * 0.01 end })
+Fish3:AddSlider({ Title = "Velocidade Orbital (graus/hit)", Min = 5, Max = 180, Default = 45, Increment = 5, Callback = function(v) _G.OrbitalSpeed = v end })
+Fish3:AddToggle({ Title = "Multi-Hit Ativado", Default = CFG_Get("MultiHitMode", false), Callback = function(s) _G.MultiHitMode = s CFG_Save() end })
+Fish3:AddToggle({ Title = "Teleporte Preditivo", Default = CFG_Get("PredictiveTP", false), Callback = function(s) _G.PredictiveTP = s CFG_Save() end })
+Fish3:AddDivider()
+
+Fish3 = v163.setting:AddSection("Ataque Instantâneo", true)
+Fish3:AddParagraph({
+    Title = "-[ ATAQUE INSTANTÂNEO ]-",
+    Content = "Ataca o alvo do farm contínuamente usando TP Instant puro, ignorando Tween. Configure a velocidade: 0.1s = máximo, 1s = mais suave. Funciona junto com o farm ativo."
+})
+local _instSlider
+_instSlider = Fish3:AddSlider({
+    Title = "Velocidade do Ataque (segundos)",
+    Min = 1, Max = 10, Default = math.floor(CFG_Get("InstantAttackSpeed", 0.1) * 10),
+    Increment = 1,
+    Callback = function(v)
+        _G.InstantAttackSpeed = v * 0.1
+        CFG_Save()
+    end
+})
+Fish3:AddToggle({
+    Title = "Ataque Instantâneo Ativado",
+    Default = CFG_Get("InstantAttackMode", false),
+    Callback = function(s)
+        _G.InstantAttackMode = s
+        CFG_Save()
+        if s then
+            dragonhub("Ataque Instantâneo ON | Speed: " .. tostring(_G.InstantAttackSpeed) .. "s")
+        end
+    end
+})
+Fish3:AddDivider()
+
+Fish3 = v163.setting:AddSection("⚡ Modo Fúria (Experimental)", true)
+Fish3:AddParagraph({
+    Title = "-[ MODO FÚRIA ]-",
+    Content = "Dispara CombatRemote direto em loop máximo — sem animação, sem TP, sem delay.\nUsa o mesmo Remote do soco normal. Ative o Farm primeiro para definir o alvo, depois ligue o Fúria.\n\nAVISO: Velocidade máxima pode causar kick por anticheat. Use o slider para limitar se necessário."
+})
+local _rageDropdown
+_rageDropdown = Fish3:AddDropdown({
+    Title = "Alvo do Fúria",
+    Options = getNPC(true),
+    Default = "None",
+    Multi = false,
+    Callback = function(v)
+        if v == "None" then _G.RageModeTarget = nil return end
+        -- Busca o NPC pelo nome no workspace
+        local npcsFolder = workspace:FindFirstChild("NPCs")
+        if not npcsFolder then return end
+        for _, npc in ipairs(npcsFolder:GetChildren()) do
+            local processed = npc.Name:gsub("%d+",""):match("^%s*(.-)%s*$")
+            if processed == v then
+                local hum = npc:FindFirstChild("Humanoid")
+                if hum and hum.Health > 0 then
+                    _G.RageModeTarget = npc
+                    break
+                end
+            end
+        end
+    end
+})
+Fish3:AddButton({
+    Title = "Atualizar Lista de NPCs",
+    Callback = function() _rageDropdown:SetValues(getNPC(true)) end
+})
+Fish3:AddSlider({
+    Title = "Limite de Fire (0 = sem limite)",
+    Min = 0, Max = 20, Default = 0, Increment = 1,
+    Callback = function(v)
+        _G.RageFireRate = v * 0.01  -- 0 = cada Heartbeat, 20 = 0.2s entre fires
+    end
+})
+Fish3:AddToggle({
+    Title = "Parado (Sem TP) — Fire à distância",
+    Default = false,
+    Callback = function(s)
+        _G.RageNoTP = s
+        if s then
+            dragonhub("Fúria: Sem TP ativo — aumente Distância de Farm para testar alcance")
+        end
+    end
+})
+Fish3:AddToggle({
+    Title = "Modo Fúria Ativo",
+    Default = false,
+    Callback = function(s)
+        _G.RageMode = s
+        if s then
+            dragonhub("⚡ MODO FÚRIA ON — Fire puro sem animação")
+        else
+            dragonhub("Modo Fúria desativado.")
+        end
+    end
+})
+Fish3:AddDivider()
+
+Fish3 = v163.setting:AddSection("Agrupar Inimigos (Pull)", true)
+Fish3:AddParagraph({
+    Title = "-[ AGRUPAR INIMIGOS ]-",
+    Content = "Dá agro (hit) em cada NPC da área para forçá-los a te perseguir.\nO personagem visita cada inimigo rapidamente, dispara o CombatRemote e volta para sua posição âncora.\n\nWarpNPC / VelocityPush / Combinado: todos usam AggroAttack (mecânica real que funciona).\nTeleportPlayer: igual, mas com pausa levemente maior entre cada NPC.\n\nOBS: Enquanto Pull ativo, você fica ancorado na posição após cada rodada de agro."
+})
+Fish3:AddDropdown({
+    Title = "Método de Pull",
+    Options = {"WarpNPC", "TeleportPlayer", "VelocityPush", "Combinado"},
+    Default = "WarpNPC",
+    Multi = false,
+    Callback = function(v) _G.PullMethod = v end
+})
+Fish3:AddSlider({
+    Title = "Raio de Busca (studs)",
+    Min = 10, Max = 300, Default = 80, Increment = 10,
+    Callback = function(v) _G.PullRadius = v end
+})
+Fish3:AddSlider({
+    Title = "Intervalo do Pull (x0.1s)",
+    Min = 1, Max = 20, Default = 3, Increment = 1,
+    Callback = function(v) _G.PullDelay = v * 0.1 end
+})
+Fish3:AddInput({
+    Title = "Filtrar por Nome (vazio = todos)",
+    Default = "",
+    Callback = function(v) _G.PullFilterName = v or "" end
+})
+Fish3:AddToggle({
+    Title = "Agrupar Inimigos Ativo",
+    Default = false,
+    Callback = function(s)
+        _G.PullEnabled = s
+        if s then
+            StartPullAnchor()
+            dragonhub("Pull ON | Ficando parado | Método: " .. (_G.PullMethod or "WarpNPC") .. " | Raio: " .. tostring(_G.PullRadius) .. " studs")
+        else
+            StopPullAnchor()
+            dragonhub("Pull desativado.")
+        end
+    end
+})
+Fish3:AddButton({
+    Title = "Pull Manual (1x agora)",
+    Callback = function()
+        local npcs = GetNearbyNPCs(_G.PullRadius, _G.PullFilterName)
+        DoPull()
+        dragonhub("Pull executado em " .. #npcs .. " NPCs próximos")
+    end
+})
+Fish3:AddDivider()
+
+Fish3 = v163.setting:AddSection("Habilidades", true)
+Fish3:AddToggle({ Title = "Usar Skill Automático", Default = CFG_Get("AutoSkill", false), Callback = function(state) _G.AutoSkill = state CFG_Save() end })
+Fish3:AddToggle({ Title = "Skill Z Automático", Default = CFG_Get("SkillZ", false), Callback = function(state) _G.SkillZ = state CFG_Save() end })
+Fish3:AddToggle({ Title = "Skill X Automático", Default = CFG_Get("SkillX", false), Callback = function(state) _G.SkillX = state CFG_Save() end })
+Fish3:AddToggle({ Title = "Skill C Automático", Default = CFG_Get("SkillC", false), Callback = function(state) _G.SkillC = state CFG_Save() end })
+Fish3:AddToggle({ Title = "Skill V Automático", Default = CFG_Get("SkillV", false), Callback = function(state) _G.SkillV = state CFG_Save() end })
+Fish3:AddToggle({ Title = "Skill F Automático", Default = CFG_Get("SkillF", false), Callback = function(state) _G.SkillF = state CFG_Save() end })
+
+-- ═══════════════════════════════════════════════════════
+-- FUNÇÕES AUXILIARES DE FARM
+-- ═══════════════════════════════════════════════════════
+
+local function IsCharacterOk()
+    local char = LP.Character
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return false end
+    local hrpCheck = char:FindFirstChild("HumanoidRootPart")
+    if not hrpCheck then return false end
+    if hrpCheck.Position.Y < -100 then return false end
+    return true
+end
+
+local function WaitForCharacter()
+    local attempts = 0
+    while not IsCharacterOk() and attempts < 40 do
+        task.wait(0.5)
+        attempts += 1
+    end
+    local ok = IsCharacterOk()
+    if not ok then
+        warn("[DragonHUB] Personagem não disponível após espera – tentando respawn")
+        pcall(function()
+            LP:LoadCharacter()
+        end)
+        task.wait(3)
+    end
+    return IsCharacterOk()
+end
+
+-- Loop do Pull em background
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        local delay = math.max(_G.PullDelay or 0.3, 0.05)
+        task.wait(delay)
+        if _G.PullEnabled and IsCharacterOk() then
+            pcall(DoPull)
+        end
+    end
+end)
+
+local function moverParaNPC(target, islandName, islandData)
+    -- Se Pull ativo, não move o personagem para o NPC
+    if _G.PullEnabled then return true end
+    local myChar = LP.Character
+    if not myChar then return false end
+    local myHum = myChar:FindFirstChildOfClass("Humanoid")
+    if not myHum or myHum.Health <= 0 then
+        LP.CharacterAdded:Wait()
+        task.wait(2)
+        return false
+    end
+    local myHrp = hrp()
+    if not myHrp then return false end
+    if not target or not target.Parent then return false end
+    local targetHum = target:FindFirstChild("Humanoid")
+    if not targetHum or targetHum.Health <= 0 then return false end
+    if islandData and (myHrp.Position - islandData.Position).Magnitude > 780 then
+        TeleportToIsland(islandName)
+        task.wait(2)
+        myHrp = hrp()
+        if not myHrp then return false end
+    end
+    local cok = target:FindFirstChild("HumanoidRootPart")
+    if cok then
+        TP(cok.CFrame * getAttackPos())
+    else
+        local pivotPos = target.WorldPivot.Position
+        TP(CFrame.new(pivotPos + Vector3.new(0, 3, 0)))
+    end
+    -- Aguarda chegada antes de liberar o loop de ataque
+    if _G.SelectModeTP == "Tween" then
+        local destPos = cok and (cok.CFrame * getAttackPos()).Position or (target.WorldPivot.Position + Vector3.new(0,3,0))
+        WaitArrival(destPos, 6, 3)
+    else
+        task.wait(math.max(TELEPORT_COOLDOWN, 0.1))
+    end
+    return true
+end
+
+-- ═══════════════════════════════════════════════════════
+-- LOOPS DE FARM
+-- ═══════════════════════════════════════════════════════
+
+-- FARM DE MOB SELECIONADO
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.1)
+        local ok, err = pcall(function()
+            if _G.PrioriySystem or _G.PrioriySystem2 then return end
+            if not _G.StartingAUfarm then return end
+            if not selectedNPCs or #selectedNPCs == 0 then return end
+            if not IsCharacterOk() then WaitForCharacter() return end
+
+            for _, name in ipairs(selectedNPCs) do
+                if not _G.StartingAUfarm then break end
+                if not _G.DRAGONHUB_ACTIVE then break end
+                if _G.PrioriySystem or _G.PrioriySystem2 then break end
+                if not IsCharacterOk() then WaitForCharacter() break end
+
+                local target = findNPC(name, "IncludeUnderscore")
+                if not target then task.wait(1) continue end
+
+                local hum = target:FindFirstChild("Humanoid")
+                if not hum or hum.Health <= 0 then continue end
+
+                _G._InstantTarget = target
+
+                if _G.StartQuest then
+                    if not GetCurrentQuestTitle() then
+                        GetQuest(name)
+                        task.wait(0.5)
+                    end
+                end
+
+                local npcPos = target.WorldPivot.Position
+                local islandName, islandData = GetClosestIsland(npcPos)
+                if not moverParaNPC(target, islandName, islandData) then continue end
+
+                repeat
+                    if not _G.StartingAUfarm or not _G.DRAGONHUB_ACTIVE then break end
+                    if _G.PrioriySystem or _G.PrioriySystem2 then break end
+                    if not IsCharacterOk() then WaitForCharacter() break end
+                    if not target or not target.Parent then break end
+                    local th = target:FindFirstChild("Humanoid")
+                    if not th or th.Health <= 0 then break end
+                    if target:FindFirstChild("HumanoidRootPart") then
+                        SmartAttack(target)
+                    else
+                        break
+                    end
+                    task.wait()
+                until not _G.StartingAUfarm
+                    or not _G.DRAGONHUB_ACTIVE
+                    or _G.PrioriySystem or _G.PrioriySystem2
+                    or not target or not target.Parent
+                    or not target:FindFirstChild("Humanoid")
+                    or target.Humanoid.Health <= 0
+                    or not target:FindFirstChild("HumanoidRootPart")
+                    or not IsCharacterOk()
+
+                -- Sem espera — busca próximo NPC do mesmo tipo imediatamente
+                -- (personagem já está na posição certa, pega o mais próximo)
+                if _G.StartingAUfarm and _G.DRAGONHUB_ACTIVE then
+                    local next = findNPC(name, "IncludeUnderscore")
+                    if next then
+                        target = next
+                        _G._InstantTarget = target
+                        -- Só move se estiver longe (> Adis*2)
+                        local myH = hrp()
+                        local nxtHRP = next:FindFirstChild("HumanoidRootPart")
+                        if myH and nxtHRP and (myH.Position - nxtHRP.Position).Magnitude > (_G.Adis or 5) * 2 then
+                            local npcPos2 = next.WorldPivot.Position
+                            local iName2, iData2 = GetClosestIsland(npcPos2)
+                            moverParaNPC(next, iName2, iData2)
+                        end
+                    end
+                end
+            end
+        end)
+        if not ok then
+            warn("[Farm Mob] Erro: " .. tostring(err))
+            task.wait(1)
+        end
+    end
+end)
+
+-- FARM DE NÍVEL (Auto Quest)
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.1)
+        local ok, err = pcall(function()
+            if _G.PrioriySystem or _G.PrioriySystem2 then return end
+            if not _G.StartingLevelingFARM then return end
+            if not IsCharacterOk() then WaitForCharacter() return end
+
+            local questName, npcType = GetBestQuest()
+            if not npcType then task.wait(1) return end
+
+            if not _G.StartingLevelingFARM or not _G.DRAGONHUB_ACTIVE then return end
+
+            local npcTypeX = npcType == "SlimeWarrior" and "Slime" or npcType
+            local target = findNPC(npcTypeX, "IncludeUnderscore")
+            if not target then task.wait(2) return end
+
+            local hum = target:FindFirstChild("Humanoid")
+            if not hum or hum.Health <= 0 then task.wait(0.5) return end
+
+            _G._InstantTarget = target
+
+            local npcPos = target.WorldPivot.Position
+            local islandName, islandData = GetClosestIsland(npcPos)
+            if not moverParaNPC(target, islandName, islandData) then return end
+
+            repeat
+                if not _G.StartingLevelingFARM or not _G.DRAGONHUB_ACTIVE then break end
+                if _G.PrioriySystem or _G.PrioriySystem2 then break end
+                if not IsCharacterOk() then WaitForCharacter() break end
+                if not target or not target.Parent then break end
+                local th = target:FindFirstChild("Humanoid")
+                if not th or th.Health <= 0 then break end
+                if target:FindFirstChild("HumanoidRootPart") then
+                    SmartAttack(target)
+                else
+                    break
+                end
+                task.wait()
+            until not _G.StartingLevelingFARM
+                or not _G.DRAGONHUB_ACTIVE
+                or _G.PrioriySystem or _G.PrioriySystem2
+                or not target or not target.Parent
+                or not target:FindFirstChild("Humanoid")
+                or target.Humanoid.Health <= 0
+                or not target:FindFirstChild("HumanoidRootPart")
+                or not IsCharacterOk()
+
+            if _G.StartingLevelingFARM and _G.DRAGONHUB_ACTIVE then
+                -- Sem espera — re-verifica quest imediatamente
+                if not GetCurrentQuestTitle() then
+                    GetBestQuest()
+                    task.wait(0.3)
+                end
+            end
+        end)
+        if not ok then
+            warn("[Farm Nível] Erro: " .. tostring(err))
+            task.wait(1)
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════
+-- LIMIAR DE BUILD
+-- ═══════════════════════════════════════════════════════
+Fish37 = v163.thr:AddSection("Limiar de Build", true)
+Fish37:AddParagraph({
+    Title = "-[ INFORMAÇÕES ]-",
+    Content = "COMO USAR?\nAtive a Troca Automática de Build, escolha sua Build de Dano e Build de Sorte no menu, depois defina o % de HP de troca.\nO script usará a Build de Dano enquanto o HP do boss estiver acima do % e trocará para a Build de Sorte quando cair abaixo.\n\nCOMO ADICIONAR BUILD?\nAbra as Configurações do jogo e encontre Salvar Builds no lado esquerdo. Salve suas builds lá.\n\nSUGESTÃO? ENCONTROU BUG? ENTRE NO DISCORD !!"
+})
+local buildList = {"1","2","3","4","5"}
+Fish37:AddDropdown({ Title = "Selecionar Build 1 [Build de Dano]", Options = buildList, Default = "1", Multi = false, Callback = function(Value) _G.DamageBuild = tonumber(Value) end })
+Fish37:AddDropdown({ Title = "Selecionar Build 2 [Build de Sorte]", Options = buildList, Default = "1", Multi = false, Callback = function(Value) _G.LuckBuild = tonumber(Value) end })
+Fish37:AddSlider({ Title = "Limiar de HP %", Min = 1, Max = 50, Default = 15, Increment = 1, Callback = function(Value) _G.BuildThreshold = Value end })
+Fish37:AddToggle({ Title = "Iniciar Troca Automática de Build", Default = CFG_Get("AutoBuildSwitch", false), Callback = function(state) _G.AutoBuildSwitch = state CFG_Save() end })
+
+-- ═══════════════════════════════════════════════════════
+-- ATRIBUTOS
+-- ═══════════════════════════════════════════════════════
+kon1 = v163.stats:AddSection("Pontos de Atributo", true)
+kon1:AddToggle({ Title = "Atrib. Corpo a Corpo Automático", Default = CFG_Get("AutoStatsMelee", false), Callback = function(state) _G.AutoStatsMelee = state CFG_Save() end })
+kon1:AddToggle({ Title = "Atrib. Defesa Automático", Default = CFG_Get("AutoStatsDefense", false), Callback = function(state) _G.AutoStatsDefense = state CFG_Save() end })
+kon1:AddToggle({ Title = "Atrib. Espada Automático", Default = CFG_Get("AutoStatsSword", false), Callback = function(state) _G.AutoStatsSword = state CFG_Save() end })
+kon1:AddToggle({ Title = "Atrib. Poder Automático", Default = CFG_Get("AutoStatsPower", false), Callback = function(state) _G.AutoStatsPower = state CFG_Save() end })
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.1)
+        pcall(function()
+            if StatPoints.Value > 0 then
+                if _G.AutoStatsMelee then Event:FireServer("Melee", 1) end
+                if _G.AutoStatsDefense then Event:FireServer("Defense", 1) end
+                if _G.AutoStatsSword then Event:FireServer("Sword", 1) end
+                if _G.AutoStatsPower then Event:FireServer("Power", 1) end
+            end
+        end)
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════
+-- BOSS
+-- ═══════════════════════════════════════════════════════
+Fish4 = v163.bs:AddSection("Boss Espontâneo")
+_G.RealNamedBRo = "SaberBoss"
+_G.RealNamedBRoX = "SaberBoss"
+_G.ListSpawnBoss = {"GojoBoss","SukunaBoss","YujiBoss","JinwooBoss","AizenBoss","AlucardBoss","MadokaBoss","YamatoBoss"}
+_G.SelectBosss = {"AizenBoss"}
+Fish4:AddDropdown({
+    Title = "Selecionar Boss Alvo", Options = _G.ListSpawnBoss, Default = "Above", Multi = true,
+    Callback = function(value)
+        if type(value) == "string" then _G.SelectBosss = { value } else _G.SelectBosss = value end
+    end
+})
+_G.ListSpawnBossPT = {"SaberBoss","IchigoBoss","QinShiBoss"}
+_G.SelectBSpity = "SaberBoss"
+Fish4:AddDropdown({
+    Title = "Boss para Farm de Pity", Options = _G.ListSpawnBossPT, Default = "None", Multi = false,
+    Callback = function(value)
+        _G.RealNamedBRoX = value
+        if type(value) == "string" then _G.SelectBSpity = { value } else _G.SelectBSpity = value end
+    end
+})
+Fish4:AddToggle({ Title = "Farm do Boss Selecionado", Default = false, Callback = function(state) _G.FarmSelectBS = state end })
+Fish4:AddToggle({ Title = "Farm Automático com Pity", Default = false, Callback = function(state) _G.FarmWithptBS = state end })
+Fish4:AddToggle({ Title = "Farm de Todos os Boss Espontâneos", Default = false, Callback = function(state) _G.FarmAllBS = state end })
+
+local function IsAnyBossAlive(target)
+    for _, bossName in ipairs(target) do
+        local npc = findNPC(bossName, "IncludeUnderscore")
+        if npc and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then return true end
+    end
+    return false
+end
+
+local bossIndex = 1
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait()
+        local ok, err = pcall(function()
+            if not _G.DRAGONHUB_ACTIVE then return end
+            if _G.FarmSelectBS and _G.SelectBosss then
+                for _, name in ipairs(_G.SelectBosss) do
+                    if not _G.FarmSelectBS or not _G.DRAGONHUB_ACTIVE then break end
+                    local target = findNPC(name, "IncludeUnderscore")
+                    if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                        _G.PrioriySystem = true
+                        local npcPos = target.WorldPivot.Position
+                        local islandName, islandData = GetClosestIsland(npcPos)
+                        if not target:FindFirstChild("HumanoidRootPart") then
+                            if islandData and hrp() and (hrp().Position - islandData.Position).Magnitude > 780 then TeleportToIsland(islandName) end
+                            task.wait(0.5) task.wait(TELEPORT_COOLDOWN) TP(CFrame.new(npcPos))
+                        else
+                            repeat
+                                if not _G.FarmSelectBS or not _G.DRAGONHUB_ACTIVE then break end
+                                local cok = target:WaitForChild("HumanoidRootPart",2)
+                                if cok then CheckBuildByHP(target) SmartAttack(target) end
+                            until not _G.FarmSelectBS or not _G.DRAGONHUB_ACTIVE or not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                        end
+                    else
+                        if not IsAnyBossAlive(_G.SelectBosss) then _G.PrioriySystem = false end
+                    end
+                end
+            elseif _G.FarmWithptBS and _G.SelectBosss and _G.SelectBSpity then
+                local isPity = false
+                pcall(function() isPity = game:GetService("Players").LocalPlayer.PlayerGui.BossUI.MainFrame.BossHPBar.Pity.text == "Pity: 24/25" end)
+                if isPity then
+                    for _, name in ipairs(_G.SelectBosss) do
+                        if not _G.FarmWithptBS or not _G.DRAGONHUB_ACTIVE then break end
+                        local target = findNPC(name, "IncludeUnderscore")
+                        if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                            _G.PrioriySystem = true
+                            local npcPos = target.WorldPivot.Position
+                            local islandName, islandData = GetClosestIsland(npcPos)
+                            if not target:FindFirstChild("HumanoidRootPart") then
+                                if islandData and hrp() and (hrp().Position - islandData.Position).Magnitude > 780 then TeleportToIsland(islandName) end
+                                task.wait(0.5) task.wait(TELEPORT_COOLDOWN) TP(CFrame.new(npcPos))
+                            else
+                                repeat
+                                    if not _G.FarmWithptBS or not _G.DRAGONHUB_ACTIVE then break end
+                                    local cok = target:WaitForChild("HumanoidRootPart",2)
+                                    if cok then CheckBuildByHP(target) SmartAttack(target) end
+                                until not _G.FarmWithptBS or not _G.DRAGONHUB_ACTIVE or not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                            end
+                        end
+                    end
+                else
+                    if _G.SelectBSpity then
+                        for _, name in ipairs(_G.SelectBSpity) do
+                            if not _G.FarmWithptBS or not _G.DRAGONHUB_ACTIVE then break end
+                            local target = findNPC(name, "IncludeUnderscore")
+                            if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                                _G.PrioriySystem = true
+                                local npcPos = target.WorldPivot.Position
+                                local islandName, islandData = GetClosestIsland(npcPos)
+                                if not target:FindFirstChild("HumanoidRootPart") then
+                                    if islandData and hrp() and (hrp().Position - islandData.Position).Magnitude > 780 then TeleportToIsland(islandName) end
+                                    task.wait(0.5) task.wait(TELEPORT_COOLDOWN) TP(CFrame.new(npcPos))
+                                else
+                                    repeat
+                                        if not _G.FarmWithptBS or not _G.DRAGONHUB_ACTIVE then break end
+                                        local cok = target:WaitForChild("HumanoidRootPart",2)
+                                        if cok then CheckBuildByHP(target) SmartAttack(target) end
+                                    until not _G.FarmWithptBS or not _G.DRAGONHUB_ACTIVE or not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                                end
+                            else
+                                _G.PrioriySystem = false
+                                local Rep = game:GetService("ReplicatedStorage")
+                                local pes = _G.RealNamedBRoX
+                                if pes == "StrongestofTodayBoss" or pes == "StrongestofHistoryBoss" then
+                                    Rep.Remotes.RequestSpawnStrongestBoss:FireServer(pes == "StrongestofTodayBoss" and "StrongestToday" or "StrongestHistory", _G.modeSelc)
+                                elseif pes == "GilgameshBoss" then Rep.Remotes.RequestSummonBoss:FireServer(pes, _G.modeSelc)
+                                elseif pes == "AnosBoss" then Rep.Remotes.RequestSpawnAnosBoss:FireServer("Anos", _G.modeSelc)
+                                elseif pes == "RimuruBoss" then Rep.RemoteEvents.RequestSpawnRimuru:FireServer(_G.modeSelc)
+                                else Rep.Remotes.RequestSummonBoss:FireServer(pes) end
+                                task.wait()
+                            end
+                        end
+                    end
+                end
+            elseif _G.FarmAllBS then
+                if not _G.DRAGONHUB_ACTIVE then return end
+                if bossIndex > #_G.ListSpawnBoss then bossIndex = 1 end
+                local name = _G.ListSpawnBoss[bossIndex]
+                local target = findNPC(name, "IncludeUnderscore")
+                if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                    _G.PrioriySystem = true
+                    local npcPos = target.WorldPivot.Position
+                    local islandName, islandData = GetClosestIsland(npcPos)
+                    local hrpBoss = target:FindFirstChild("HumanoidRootPart")
+                    if hrpBoss then
+                        repeat
+                            if not _G.FarmAllBS or not _G.DRAGONHUB_ACTIVE then break end
+                            CheckBuildByHP(target)
+                            SmartAttack(target)
+                            task.wait()
+                        until not _G.FarmAllBS or not _G.DRAGONHUB_ACTIVE or not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                    else
+                        if islandData and hrp() and (hrp().Position - islandData.Position).Magnitude > 780 then TeleportToIsland(islandName) end
+                        task.wait(0.5) task.wait(TELEPORT_COOLDOWN) TP(CFrame.new(npcPos))
+                    end
+                else
+                    bossIndex += 1
+                    if not IsAnyBossAlive(_G.ListSpawnBoss) then _G.PrioriySystem = false end
+                end
+                task.wait(0.2)
+            else
+                _G.PrioriySystem = false
+            end
+        end)
+        if not ok then
+            warn("[Boss Espontâneo] Erro: " .. tostring(err))
+            task.wait(1)
+        end
+    end
+end)
+
+Fish4 = v163.bs:AddSection("Invocar Boss")
+Fish4:AddDropdown({ Title = "Selecionar Modo", Options = {"Normal","Medium","Hard","Extreme"}, Default = "Normal", Multi = false, Callback = function(value) _G.modeSelcX = value end })
+_G.ListSpawnBossPTX = {"SaberBoss","IchigoBoss","QinShiBoss","GilgameshBoss","YamatoBoss","RimuruBoss","StrongestofTodayBoss","StrongestinHistoryBoss","AnosBoss","BlessedMaidenBoss","TrueAizenBoss","SaberAlterBoss","GreatMageBoss"}
+_G.SelectBSpityX = { "SaberBoss" }
+Fish4:AddDropdown({
+    Title = "Selecionar Boss Alvo", Options = _G.ListSpawnBossPTX, Default = "None", Multi = false,
+    Callback = function(value)
+        local bossesWithMode = {RimuruBoss=true,StrongestofTodayBoss=true,StrongestinHistoryBoss=true,AnosBoss=true,TrueAizenBoss=true}
+        local finalName = value
+        local RealName = value
+        if bossesWithMode[value] then finalName = value .. "_" .. (_G.modeSelcX or "Normal") end
+        _G.RealNamedBRoSS = RealName
+        _G.SelectBSpityX = { finalName }
+    end
+})
+_G.ListSpawnBossPTXZ = {"SaberBoss","IchigoBoss","QinShiBoss","GilgameshBoss","YamatoBoss","RimuruBoss","StrongestofTodayBoss","StrongestinHistoryBoss","AnosBoss","BlessedMaidenBoss","TrueAizenBoss","SaberAlterBoss","GreatMageBoss"}
+_G.SelectBSpityXZ = {"SaberBoss"}
+Fish4:AddDropdown({
+    Title = "Boss para Farm de Pity", Options = _G.ListSpawnBossPTXZ, Default = "None", Multi = false,
+    Callback = function(value)
+        local bossesWithMode = {RimuruBoss=true,StrongestofTodayBoss=true,StrongestinHistoryBoss=true,AnosBoss=true,TrueAizenBoss=true}
+        local finalName = value
+        local RealName = value
+        if bossesWithMode[value] then finalName = value .. "_" .. (_G.modeSelcX or "Normal") end
+        _G.RealNamedBRoS = RealName
+        _G.SelectBSpityXZ = { finalName }
+    end
+})
+Fish4:AddToggle({ Title = "Farm de Boss Invocado", Default = false, Callback = function(state) _G.FarmSUMMON = state end })
+Fish4:AddToggle({ Title = "Farm Automático com Pity", Default = false, Callback = function(state) _G.FarmSUMMONpity = state end })
+
+local function SummonBossRemote(pes, mode)
+    local Rep = game:GetService("ReplicatedStorage")
+    if pes == "StrongestofTodayBoss" or pes == "StrongestinHistoryBoss" then
+        Rep.Remotes.RequestSpawnStrongestBoss:FireServer(pes == "StrongestofTodayBoss" and "StrongestToday" or "StrongestHistory", mode)
+    elseif pes == "GilgameshBoss" or pes == "BlessedMaidenBoss" or pes == "SaberAlterBoss" then
+        Rep.Remotes.RequestSummonBoss:FireServer(pes, mode)
+    elseif pes == "AnosBoss" then
+        Rep.Remotes.RequestSpawnAnosBoss:FireServer("Anos", mode)
+    elseif pes == "RimuruBoss" then
+        Rep.RemoteEvents.RequestSpawnRimuru:FireServer(mode)
+    elseif pes == "TrueAizenBoss" then
+        Rep.RemoteEvents.RequestSpawnTrueAizen:FireServer(mode)
+    elseif pes == "GreatMageBoss" then
+        pcall(function() Rep.RemoteEvents.RequestSpawnGreatMage:FireServer(mode) end)
+    else
+        Rep.Remotes.RequestSummonBoss:FireServer(pes)
+    end
+end
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait()
+        local ok, err = pcall(function()
+            if not _G.DRAGONHUB_ACTIVE then return end
+            if _G.PrioriySystem then return end
+            if _G.FarmSUMMON and _G.SelectBSpityX then
+                for _, name in ipairs(_G.SelectBSpityX) do
+                    if _G.PrioriySystem or not _G.FarmSUMMON or not _G.DRAGONHUB_ACTIVE then break end
+                    local target = findNPC(name, "IncludeUnderscore")
+                    if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                        if not _G.PrioriySystem then
+                            _G.PrioriySystem2 = true
+                            local npcPos = target.WorldPivot.Position
+                            local islandName, islandData = GetClosestIsland(npcPos)
+                            if not target:FindFirstChild("HumanoidRootPart") then
+                                if islandData and hrp() and (hrp().Position - islandData.Position).Magnitude > 780 then TeleportToIsland(islandName) end
+                                task.wait(0.5) task.wait(TELEPORT_COOLDOWN) TP(CFrame.new(npcPos))
+                            else
+                                repeat
+                                    if not _G.FarmSUMMON or not _G.DRAGONHUB_ACTIVE then break end
+                                    local cok = target:WaitForChild("HumanoidRootPart",2)
+                                    if cok then CheckBuildByHP(target) SmartAttack(target) end
+                                until not _G.FarmSUMMON or _G.PrioriySystem or not _G.DRAGONHUB_ACTIVE or not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                            end
+                        end
+                    else
+                        SummonBossRemote(_G.RealNamedBRoSS, _G.modeSelcX)
+                        task.wait(1)
+                        if not IsAnyBossAlive(_G.ListSpawnBoss) then _G.PrioriySystem2 = false end
+                    end
+                end
+            elseif _G.FarmSUMMONpity and _G.SelectBSpityX and _G.SelectBSpityXZ then
+                local isPity = false
+                pcall(function() isPity = game:GetService("Players").LocalPlayer.PlayerGui.BossUI.MainFrame.BossHPBar.Pity.text == "Pity: 24/25" end)
+                if isPity then
+                    for _, name in ipairs(_G.SelectBSpityX) do
+                        if _G.PrioriySystem or not _G.FarmSUMMONpity or not _G.DRAGONHUB_ACTIVE then break end
+                        local target = findNPC(name, "IncludeUnderscore")
+                        if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                            if not _G.PrioriySystem then
+                                _G.PrioriySystem2 = true
+                                local npcPos = target.WorldPivot.Position
+                                local islandName, islandData = GetClosestIsland(npcPos)
+                                if not target:FindFirstChild("HumanoidRootPart") then
+                                    if islandData and hrp() and (hrp().Position - islandData.Position).Magnitude > 780 then TeleportToIsland(islandName) end
+                                    task.wait(0.5) task.wait(TELEPORT_COOLDOWN) TP(CFrame.new(npcPos))
+                                else
+                                    repeat
+                                        if not _G.FarmSUMMONpity or not _G.DRAGONHUB_ACTIVE then break end
+                                        local cok = target:WaitForChild("HumanoidRootPart",2)
+                                        if cok then CheckBuildByHP(target) SmartAttack(target) end
+                                    until not _G.FarmSUMMONpity or _G.PrioriySystem or not _G.DRAGONHUB_ACTIVE or not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                                end
+                            end
+                        else
+                            if not IsAnyBossAlive(_G.ListSpawnBoss) then _G.PrioriySystem2 = false end
+                            SummonBossRemote(_G.RealNamedBRoSS, _G.modeSelcX)
+                            task.wait()
+                        end
+                    end
+                else
+                    if _G.SelectBSpityXZ then
+                        for _, name in ipairs(_G.SelectBSpityXZ) do
+                            if _G.PrioriySystem or not _G.FarmSUMMONpity or not _G.DRAGONHUB_ACTIVE then break end
+                            local target = findNPC(name, "IncludeUnderscore")
+                            if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                                if not _G.PrioriySystem then
+                                    _G.PrioriySystem2 = true
+                                    local npcPos = target.WorldPivot.Position
+                                    local islandName, islandData = GetClosestIsland(npcPos)
+                                    if not target:FindFirstChild("HumanoidRootPart") then
+                                        if islandData and hrp() and (hrp().Position - islandData.Position).Magnitude > 780 then TeleportToIsland(islandName) end
+                                        task.wait(0.5) task.wait(TELEPORT_COOLDOWN) TP(CFrame.new(npcPos))
+                                    else
+                                        repeat
+                                            if not _G.FarmSUMMONpity or not _G.DRAGONHUB_ACTIVE then break end
+                                            local cok = target:WaitForChild("HumanoidRootPart",2)
+                                            if cok then CheckBuildByHP(target) SmartAttack(target) end
+                                        until not _G.FarmSUMMONpity or _G.PrioriySystem or not _G.DRAGONHUB_ACTIVE or not target or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                                    end
+                                end
+                            else
+                                SummonBossRemote(_G.RealNamedBRoS, _G.modeSelcX)
+                                if not IsAnyBossAlive(_G.ListSpawnBoss) then _G.PrioriySystem2 = false end
+                                task.wait()
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        if not ok then
+            warn("[Boss Invocado] Erro: " .. tostring(err))
+            task.wait(1)
+        end
+    end
+end)
+
+Fish4 = v163.bs:AddSection("Material e Status de Pity", true)
+Fish4:AddToggle({ Title = "Farm de Chave Limitless", Default = false, Callback = function(state) _G.FarmlK = state end })
+Fish4:AddToggle({ Title = "Farm de Chave Malevolente", Default = false, Callback = function(state) _G.FarmMK = state end })
+Fish4:AddToggle({ Title = "Farm de Espada Quebrada", Default = false, Callback = function(state) _G.FarmGILGA = state end })
+Fish4:AddToggle({ Title = "Craftar Graal Divino Automático", Default = false, Callback = function(state) _G.AutoCraftDG = state end })
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(2)
+        pcall(function()
+            if _G.AutoCraftDG then
+                local Ev = game:GetService("ReplicatedStorage").Remotes.RequestGrailCraft
+                Ev:InvokeServer("DivineGrail", 1)
+            end
+        end)
+    end
+end)
+PromptParagraph1 = Fish4:AddParagraph({ Title = "Status de Pity", Content = "Verificando..." })
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait()
+        local ok, err = pcall(function()
+            if not _G.DRAGONHUB_ACTIVE then return end
+            local DK = game:GetService("Players").LocalPlayer.PlayerGui.BossUI.MainFrame.BossHPBar.Pity.text
+            PromptParagraph1:SetContent(DK)
+            if _G.FarmlK or _G.FarmMK or _G.FarmGILGA then
+                local ListEnemiesKEY
+                for _, npc in ipairs(getNPC(true)) do
+                    if _G.FarmlK and _G.FarmMK then
+                        if npc == "StrongSorcerer" or npc == "Curse" then ListEnemiesKEY = {"GojoBoss","SukunaBoss",npc} end
+                    elseif _G.FarmlK then
+                        if npc == "StrongSorcerer" then ListEnemiesKEY = {"GojoBoss",npc} end
+                    elseif _G.FarmMK then
+                        if npc == "Curse" then ListEnemiesKEY = {"SukunaBoss",npc} end
+                    elseif _G.FarmGILGA then
+                        if npc == "Slime" then ListEnemiesKEY = {npc} end
+                    end
+                end
+                if not ListEnemiesKEY then return end
+                for _, name in ipairs(ListEnemiesKEY) do
+                    if not _G.DRAGONHUB_ACTIVE then break end
+                    if not (_G.FarmlK or _G.FarmMK or _G.FarmGILGA) then break end
+                    local target = findNPC(name, "IncludeUnderscore")
+                    if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                        local npcPos = target.WorldPivot.Position
+                        local islandName, islandData = GetClosestIsland(npcPos)
+                        if islandData and hrp() and (hrp().Position - islandData.Position).Magnitude > 780 then
+                            TeleportToIsland(islandName) task.wait(0.3)
+                        else
+                            if not target:FindFirstChild("HumanoidRootPart") then
+                                task.wait(TELEPORT_COOLDOWN) TP(CFrame.new(npcPos))
+                            else
+                                repeat
+                                    if not _G.DRAGONHUB_ACTIVE then break end
+                                    local cok = target:WaitForChild("HumanoidRootPart",2)
+                                    if cok then SmartAttack(target) end
+                                until (not _G.FarmGILGA and not _G.FarmlK and not _G.FarmMK) or not _G.DRAGONHUB_ACTIVE or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        if not ok then
+            warn("[Farm Chave/Pity] Erro: " .. tostring(err))
+            task.wait(1)
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════
+-- DIVERSOS
+-- ═══════════════════════════════════════════════════════
+Fish62 = v163.ts:AddSection("Mercador")
+Merchant = Fish62:AddParagraph({ Title = "-[ ESTOQUE EM TEMPO REAL ]-", Content = GetMerchantStockNames() })
+local Pey = { "All" }
+for _, itemName in ipairs(GetAllMerchantItems()) do table.insert(Pey, itemName) end
+Fish62:AddDropdown({ Title = "Selecionar Itens do Mercador", Options = Pey, Default = "All", Multi = true, Callback = function(values) _G.selectedMerchantItems = values end })
+Fish62:AddToggle({ Title = "Comprar no Mercador Automático", Default = false, Callback = function(state) _G.AutoBuyMerchant = state end })
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait()
+        pcall(function() if _G.AutoBuyMerchant then CheckAndBuy() end end)
+    end
+end)
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(1.5)
+        pcall(function() Merchant:SetContent(GetMerchantStockNames()) end)
+    end
+end)
+
+Fish62 = v163.ts:AddSection("Reroll", true)
+Fish62:AddDropdown({
+    Title = "Selecionar Trait Alvo", Options = GetAllTraitsFormatted(), Default = "None", Multi = true,
+    Callback = function(values)
+        _G.selectedTrait = {}
+        if not values then return end
+        if typeof(values) == "string" then
+            local realName = DropdownMap[values]
+            if realName then table.insert(_G.selectedTrait, realName) end
+            return
+        end
+        if typeof(values) == "table" then
+            for _, formatted in pairs(values) do
+                local realName = DropdownMap[formatted]
+                if realName then table.insert(_G.selectedTrait, realName) end
+            end
+        end
+    end
+})
+Fish62:AddToggle({ Title = "Reroll de Trait Automático", Default = false, Callback = function(state) _G.StartGachaTRAIT = state end })
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait()
+        pcall(function() if _G.StartGachaTRAIT then CheckTrait() end end)
+    end
+end)
+Fish62:AddDropdown({
+    Title = "Selecionar Raça Alvo", Options = GetAllRacesFormatted(), Multi = true, Default = {},
+    Callback = function(values)
+        _G.selectedRaces = {}
+        for _, formatted in pairs(NormalizeToTable(values)) do
+            local realName = _G.RaceDropdownMap[formatted]
+            if realName then table.insert(_G.selectedRaces, realName) end
+        end
+    end
+})
+Fish62:AddToggle({ Title = "Reroll de Raça Automático", Default = false, Callback = function(state) _G.AutoRerollRace = state if state then AutoRerollRace() end end })
+Fish62:AddDropdown({
+    Title = "Selecionar Clã Alvo", Options = GetAllClansFormatted(), Multi = true, Default = {},
+    Callback = function(values)
+        _G.selectedClans = {}
+        for _, formatted in pairs(NormalizeToTable(values)) do
+            local realName = _G.ClanDropdownMap[formatted]
+            if realName then table.insert(_G.selectedClans, realName) end
+        end
+    end
+})
+Fish62:AddToggle({ Title = "Reroll de Clã Automático", Default = false, Callback = function(state) _G.AutoRerollClan = state if state then AutoRerollClan() end end })
+
+-- ═══════════════════════════════════════════════════════
+-- TROCA
+-- ═══════════════════════════════════════════════════════
+Fish621 = v163.trade:AddSection("Troca", true)
+_G.SelectedTrade = nil
+Fish621:AddDropdown({ Title = "Selecionar Troca", Options = TradeNames, Default = TradeNames[1], Multi = false, Callback = function(value) _G.SelectedTrade = value end })
+local TRADE_MULTIPLIER = 1
+Fish621:AddInput({ Title = "Multiplicador de Quantidade [ padrão: 1 ]", Default = "1", Callback = function(p284)
+    local num = tonumber(p284)
+    if num and num >= 0 then TRADE_MULTIPLIER = num end
+end })
+Fish621:AddButton({
+    Title = "Adicionar Itens de Troca",
+    Callback = function()
+        if not _G.SelectedTrade then return end
+        local selected = type(_G.SelectedTrade) == "table" and _G.SelectedTrade[1] or _G.SelectedTrade
+        local tradeItems = ListTrade[selected]
+        if not tradeItems then return end
+        local Ev = game:GetService("ReplicatedStorage").Remotes.TradeRemotes.AddItemToTrade
+        for _, item in ipairs(tradeItems) do
+            pcall(function()
+                Ev:FireServer("Items", item.Name, item.Amount * (TRADE_MULTIPLIER or 1))
+                task.wait(0.5)
+            end)
+        end
+    end
+})
+
+-- ═══════════════════════════════════════════════════════
+-- MASMORRA
+-- ═══════════════════════════════════════════════════════
+Fish5 = v163.dungeon:AddSection("Lobby da Masmorra", true)
+Fish5:AddDropdown({ Title = "Selecionar Masmorra", Options = {"CidDungeon","RuneDungeon","DoubleDungeon","BossRush"}, Default = "None", Multi = false, Callback = function(value) _G.SelectedIslandTP = value end })
+Fish5:AddButton({ Title = "Abrir Portal da Masmorra", Callback = function()
+    pcall(function() game:GetService("ReplicatedStorage").Remotes.RequestDungeonPortal:FireServer(_G.SelectedIslandTP) end)
+end })
+Fish5 = v163.dungeon:AddSection("Funções da Masmorra", true)
+Fish5:AddDropdown({ Title = "Selecionar Modo", Options = {"Easy","Medium","Hard","Extreme"}, Default = "Easy", Multi = false, Callback = function(value) _G.SelectMODEraid = value end })
+Fish5:AddToggle({ Title = "Repetir Automático", Default = false, Callback = function(state) _G.ReplayRAID = state end })
+Fish5:AddToggle({ Title = "Iniciar Automático", Default = false, Callback = function(state) _G.StartRAID = state end })
+Fish5:AddToggle({ Title = "Farm de Masmorra Automático", Default = false, Callback = function(state) _G.FarmRAID = state end })
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(2)
+        pcall(function()
+            if _G.StartRAID and game:GetService("Players").LocalPlayer.PlayerGui.DungeonUI.ContentFrame.Actions.EasyDifficultyFrame.Visible == true then
+                game:GetService("ReplicatedStorage").Remotes.DungeonWaveVote:FireServer(_G.SelectMODEraid)
+            end
+        end)
+    end
+end)
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(2)
+        pcall(function()
+            if _G.ReplayRAID and game:GetService("Players").LocalPlayer.PlayerGui.DungeonUI.ReplayDungeonFrameVisibleOnlyWhenClearingDungeon.Visible == true then
+                game:GetService("ReplicatedStorage").Remotes.DungeonWaveReplayVote:FireServer("sponsor")
+            end
+        end)
+    end
+end)
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.7)
+        local ok, err = pcall(function()
+            if not _G.FarmRAID then return end
+            for _, name in ipairs(getNPC(true)) do
+                if not _G.FarmRAID or not _G.DRAGONHUB_ACTIVE then break end
+                local target = findNPC(name, "IncludeUnderscore")
+                if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                    if not target:FindFirstChild("HumanoidRootPart") then
+                        TP(CFrame.new(target.WorldPivot.Position))
+                    else
+                        repeat
+                            if not _G.FarmRAID or not _G.DRAGONHUB_ACTIVE then break end
+                            task.wait()
+                            if target:FindFirstChild("HumanoidRootPart") then
+                                CheckBuildByHP(target)
+                                SmartAttack(target)
+                            end
+                        until not _G.FarmRAID or not _G.DRAGONHUB_ACTIVE or not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0 or not target:FindFirstChild("HumanoidRootPart")
+                    end
+                end
+            end
+        end)
+        if not ok then
+            warn("[Farm Masmorra] Erro: " .. tostring(err))
+            task.wait(1)
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════
+-- TELEPORTE
+-- ═══════════════════════════════════════════════════════
+Fish6 = v163.tp:AddSection("Funções de Teleporte", true)
+p1 = Fish6:AddDropdown({ Title = "Selecionar Ilha", Options = GetIslandOptions(), Default = "None", Multi = false, Callback = function(value) _G.SelectedIslandTP = value end })
+p2 = Fish6:AddDropdown({ Title = "Selecionar NPC", Options = GetNPCOptions(), Default = "None", Multi = false, Callback = function(value) _G.SelectedNPC = value end })
+Fish6:AddButton({ Title = "Atualizar NPCs e Ilhas", Callback = function() p1:SetValues(GetIslandOptions()) p2:SetValues(GetNPCOptions()) end })
+Fish6:AddToggle({ Title = "Teleportar para Ilha Selecionada", Default = false, Callback = function(state) _G.TpIslandX = state end })
+Fish6:AddToggle({ Title = "Teleportar para NPC Selecionado", Default = false, Callback = function(state) _G.TpNpcX = state end })
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(1)
+        pcall(function()
+            if _G.TpIslandX then
+                game:GetService("ReplicatedStorage").Remotes:WaitForChild("TeleportToPortal"):FireServer(_G.SelectedIslandTP)
+            end
+        end)
+    end
+end)
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(1)
+        pcall(function()
+            if _G.TpNpcX then
+                local npcName = _G.SelectedNPC
+                if not npcName then return end
+                local npcFolder = workspace:FindFirstChild("ServiceNPCs")
+                if not npcFolder then return end
+                local npcModel = npcFolder:FindFirstChild(npcName)
+                if npcModel then TpTween(npcModel:GetPivot()) end
+            end
+        end)
+    end
+end)
+
+-- ═══════════════════════════════════════════════════════
+-- EVENTOS - EVENTO DE PÁSCOA
+-- ═══════════════════════════════════════════════════════
+_G.EV_BunnyFarm     = false
+_G.EV_GreatMageFarm = false
+_G.EV_AutoSummon    = false
+_G.EV_Diff          = "Normal"
+
+local function EV_FindBunny()
+    local npcs = workspace:FindFirstChild("NPCs")
+    if not npcs then return nil end
+    for _, v in ipairs(npcs:GetChildren()) do
+        local n = v.Name:lower()
+        if (n:find("bunny") or n:find("easter")) and not n:find("boss") then
+            local h = v:FindFirstChildOfClass("Humanoid")
+            if h and h.Health > 0 then return v end
+        end
+    end
+    return nil
+end
+
+local function EV_FindGreatMage()
+    local npcs = workspace:FindFirstChild("NPCs")
+    if not npcs then return nil end
+    for _, v in ipairs(npcs:GetChildren()) do
+        local n = v.Name:lower()
+        if n:find("greatmage") or n:find("great_mage") or n:find("frieren") then
+            local h = v:FindFirstChildOfClass("Humanoid")
+            if h and h.Health > 0 then return v end
+        end
+    end
+    return nil
+end
+
+local function EV_SummonGreatMage()
+    local Rep = game:GetService("ReplicatedStorage")
+    local ok1 = pcall(function()
+        Rep.RemoteEvents.RequestSpawnGreatMage:FireServer(_G.EV_Diff)
+    end)
+    if not ok1 then
+        pcall(function()
+            Rep.Remotes.RequestSummonBoss:FireServer("GreatMageBoss", _G.EV_Diff)
+        end)
+    end
+end
+
+local function EV_Attack(target)
+    if not target then return end
+    SmartAttack(target)
+end
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        task.wait(0.05)
+        local ok, err = pcall(function()
+            if not _G.DRAGONHUB_ACTIVE then return end
+            if _G.EV_BunnyFarm then
+                local target = EV_FindBunny()
+                if target then
+                    repeat
+                        EV_Attack(target)
+                        task.wait()
+                    until not _G.EV_BunnyFarm
+                        or not _G.DRAGONHUB_ACTIVE
+                        or not target:FindFirstChild("Humanoid")
+                        or target.Humanoid.Health <= 0
+                else
+                    pcall(function() PortalRemote:FireServer("EasterIsland") end)
+                    task.wait(2)
+                end
+            elseif _G.EV_GreatMageFarm then
+                local target = EV_FindGreatMage()
+                if not target then
+                    if _G.EV_AutoSummon then EV_SummonGreatMage() end
+                    pcall(function() PortalRemote:FireServer("EasterIsland") end)
+                    task.wait(2)
+                else
+                    repeat
+                        EV_Attack(target)
+                        task.wait()
+                    until not _G.EV_GreatMageFarm
+                        or not _G.DRAGONHUB_ACTIVE
+                        or not target:FindFirstChild("Humanoid")
+                        or target.Humanoid.Health <= 0
+                end
+            end
+        end)
+        if not ok then
+            warn("[Evento Páscoa] Erro: " .. tostring(err))
+            task.wait(1)
+        end
+    end
+end)
+
+local ev = v163.ev
+local evSec1 = ev:AddSection("Informações")
+evSec1:AddParagraph({
+    Title = "-[ EVENTO DE PÁSCOA ]-",
+    Content = "Farm de Coelhos: Faz farm dos Coelhos espalhados pelo mapa para dropar Ovos de Páscoa e Chaves de Páscoa. Os Coelhos são NPCs normais de PvP, o drop é por RNG ao matar.\n\nBoss Grande Mago (Frieren): Boss do Evento de Páscoa. É necessário usar Chaves de Páscoa para invocar. Selecione a dificuldade antes de ativar.\n\nOBS: Farm de Coelhos e Farm do Grande Mago não rodam juntos. Ativar um desativa o outro automaticamente."
+})
+
+local evSec2 = ev:AddSection("Farm de Coelhos")
+evSec2:AddToggle({
+    Title = "Farm de Mob Coelho",
+    Default = false,
+    Callback = function(state)
+        _G.EV_BunnyFarm = state
+        if state and _G.EV_GreatMageFarm then
+            _G.EV_GreatMageFarm = false
+            dragonhub("Farm do Grande Mago desativado. Farm de Coelhos ativo.")
+        end
+    end
+})
+evSec2:AddButton({
+    Title = "Teleportar para Ilha de Páscoa",
+    Callback = function()
+        pcall(function() PortalRemote:FireServer("EasterIsland") end)
+        dragonhub("Teleportando para a Ilha de Páscoa...")
+    end
+})
+
+local evSec3 = ev:AddSection("Great Mage Boss (Frieren)")
+evSec3:AddDropdown({
+    Title = "Dificuldade do Boss",
+    Options = {"Normal","Medium","Hard","Extreme"},
+    Default = "Normal",
+    Multi = false,
+    Callback = function(val) _G.EV_Diff = val end
+})
+evSec3:AddToggle({
+    Title = "Invocar Grande Mago Automático",
+    Default = false,
+    Callback = function(state) _G.EV_AutoSummon = state end
+})
+evSec3:AddToggle({
+    Title = "Farm do Boss Grande Mago",
+    Default = false,
+    Callback = function(state)
+        _G.EV_GreatMageFarm = state
+        if state and _G.EV_BunnyFarm then
+            _G.EV_BunnyFarm = false
+            dragonhub("Farm de Coelhos desativado. Farm do Grande Mago ativo.")
+        end
+    end
+})
+evSec3:AddButton({
+    Title = "Invocar Grande Mago Agora",
+    Callback = function()
+        EV_SummonGreatMage()
+        dragonhub("Invocando Grande Mago [" .. (_G.EV_Diff or "Normal") .. "]...")
+    end
+})
+
+-- ═══════════════════════════════════════════════════════
+-- FARM GLOBAL EXP (COMBINADO — Teleporte + SmartAttack)
+-- ═══════════════════════════════════════════════════════
+
+-- Dados de quest/ilha/nível (do arquivo 1 — teleporte ilhas)
+local _GF_QuestData = {
+    {minLevel=0,    maxLevel=99,    questName="ThiefHunterQuest",       island="Starter",     npcType="Thief",             label="Thief Hunter (0-99)"},
+    {minLevel=100,  maxLevel=249,   questName="ThiefBossQuest",         island="Starter",     npcType="ThiefBoss",         label="Thief Boss (100-249)"},
+    {minLevel=250,  maxLevel=499,   questName="MonkeyHunterQuest",      island="Jungle",      npcType="Monkey",            label="Monkey Hunter (250-499)"},
+    {minLevel=500,  maxLevel=749,   questName="MonkeyBossQuest",        island="Jungle",      npcType="MonkeyBoss",        label="Monkey Boss (500-749)"},
+    {minLevel=750,  maxLevel=999,   questName="DesertBanditQuest",      island="Desert",      npcType="DesertBandit",      label="Desert Bandit (750-999)"},
+    {minLevel=1000, maxLevel=1499,  questName="DesertBanditBossQuest",  island="Desert",      npcType="DesertBanditBoss",  label="Desert Bandit Boss (1000-1499)"},
+    {minLevel=1500, maxLevel=1999,  questName="FrostRogueQuest",        island="Snow",        npcType="FrostRogue",        label="Frost Rogue (1500-1999)"},
+    {minLevel=2000, maxLevel=2999,  questName="WinterWardenBossQuest",  island="Snow",        npcType="WinterWardenBoss",  label="Winter Warden Boss (2000-2999)"},
+    {minLevel=3000, maxLevel=3999,  questName="SorcererHunterQuest",    island="Shibuya",     npcType="Sorcerer",          label="Sorcerer Hunter (3000-3999)"},
+    {minLevel=4000, maxLevel=5000,  questName="PandaSorcererBossQuest", island="Shibuya",     npcType="PandaSorcererBoss", label="Panda Sorcerer Boss (4000-5000)"},
+    {minLevel=5000, maxLevel=6250,  questName="HollowHunterQuest",      island="HuecoMundo",  npcType="Hollow",            label="Hollow Hunter (5000-6250)"},
+    {minLevel=6250, maxLevel=7000,  questName="StrongSorcererQuest",    island="Shinjuku",    npcType="StrongSorcerer",    label="Strong Sorcerer (6250-7000)"},
+    {minLevel=7000, maxLevel=8000,  questName="CurseHunterQuest",       island="Shinjuku",    npcType="Curse",             label="Curse Hunter (7000-8000)"},
+    {minLevel=8000, maxLevel=9000,  questName="SlimeWarriorQuest",      island="Slime",       npcType="SlimeWarrior",      label="Slime Warrior (8000-9000)"},
+    {minLevel=9000, maxLevel=10000, questName="AcademyChallengeQuest",  island="Academy",     npcType="Academy",           label="Academy Challenge (9000-10000)"},
+    {minLevel=10000,maxLevel=10750, questName="BladeMastersQuest",      island="Judgement",   npcType="BladeMaster",       label="Blade Masters (10000-10750)"},
+    {minLevel=10750,maxLevel=11500, questName="QuincyQuest",            island="SoulSociety", npcType="Quincy",            label="Quincy (10750-11500)"},
+    {minLevel=11500,maxLevel=12000, questName="NinjaQuest",             island="Ninja",       npcType="Ninja",             label="Ninja (11500-12000)"},
+    {minLevel=12000,maxLevel=13000, questName="LawlessQuest",           island="Lawless",     npcType="ArenaFighter",      label="Arena Fighter (12000-13000)"},
+    {minLevel=13000,maxLevel=16000, questName="TowerQuest",             island="Tower",       npcType="TowerEnemy",        label="Tower Challenge (13000-16000)"},
+}
+
+local function _GF_GetLevel()
+    local ok, val = pcall(function() return LP.Data.Level.Value end)
+    return (ok and val) or 0
+end
+
+local function _GF_GetHP()
+    local char = LP.Character
+    if not char then return 0 end
+    local hum = char:FindFirstChild("Humanoid")
+    if not hum then return 0 end
+    return (hum.Health / hum.MaxHealth) * 100
+end
+
+local function _GF_GetQuestForLevel()
+    local level = _GF_GetLevel()
+    local best = nil
+    for _, data in ipairs(_GF_QuestData) do
+        if level >= data.minLevel and level <= data.maxLevel then
+            best = data
+            break
+        end
+    end
+    if not best then
+        for i = #_GF_QuestData, 1, -1 do
+            if level >= _GF_QuestData[i].minLevel then
+                best = _GF_QuestData[i]
+                break
+            end
+        end
+    end
+    return best
+end
+
+-- Barra de progresso
+local _GF_BarGui = nil
+
+local function _GF_CreateBar()
+    if _GF_BarGui then pcall(function() _GF_BarGui:Destroy() end) end
+
+    local pg  = LP:WaitForChild("PlayerGui")
+    local sg  = Instance.new("ScreenGui")
+    sg.Name          = "GlobalFarmProgressUI"
+    sg.ResetOnSpawn  = false
+    sg.Parent        = pg
+    _GF_BarGui = sg
+
+    local frame = Instance.new("Frame")
+    frame.Size              = UDim2.new(0, 350, 0, 100)
+    frame.Position          = UDim2.new(0, 15, 0, 15)
+    frame.BackgroundColor3  = Color3.fromRGB(20, 20, 30)
+    frame.BorderSizePixel   = 2
+    frame.BorderColor3      = Color3.fromRGB(0, 255, 200)
+    frame.Parent            = sg
+
+    local title = Instance.new("TextLabel")
+    title.Size              = UDim2.new(1, 0, 0, 25)
+    title.BackgroundColor3  = Color3.fromRGB(0, 100, 150)
+    title.TextColor3        = Color3.fromRGB(255, 255, 255)
+    title.TextSize          = 14
+    title.Font              = Enum.Font.GothamBold
+    title.Text              = "FARM GLOBAL EXP"
+    title.Parent            = frame
+
+    local levelLbl = Instance.new("TextLabel")
+    levelLbl.Size               = UDim2.new(1, 0, 0, 20)
+    levelLbl.Position           = UDim2.new(0, 0, 0, 30)
+    levelLbl.BackgroundTransparency = 1
+    levelLbl.TextColor3         = Color3.fromRGB(0, 255, 150)
+    levelLbl.TextSize           = 12
+    levelLbl.Font               = Enum.Font.Gotham
+    levelLbl.Text               = "Level: 0/16000"
+    levelLbl.Parent             = frame
+
+    local missionLbl = Instance.new("TextLabel")
+    missionLbl.Size                  = UDim2.new(1, 0, 0, 20)
+    missionLbl.Position              = UDim2.new(0, 0, 0, 50)
+    missionLbl.BackgroundTransparency = 1
+    missionLbl.TextColor3            = Color3.fromRGB(200, 200, 255)
+    missionLbl.TextSize              = 11
+    missionLbl.Font                  = Enum.Font.Gotham
+    missionLbl.Text                  = "Missao: Aguardando..."
+    missionLbl.Parent                = frame
+
+    local barBg = Instance.new("Frame")
+    barBg.Size             = UDim2.new(1, -10, 0, 15)
+    barBg.Position         = UDim2.new(0, 5, 0, 75)
+    barBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    barBg.BorderSizePixel  = 1
+    barBg.BorderColor3     = Color3.fromRGB(100, 100, 150)
+    barBg.Parent           = frame
+
+    local fill = Instance.new("Frame")
+    fill.Size              = UDim2.new(0, 0, 1, 0)
+    fill.BackgroundColor3  = Color3.fromRGB(0, 255, 100)
+    fill.BorderSizePixel   = 0
+    fill.Parent            = barBg
+
+    local pctLbl = Instance.new("TextLabel")
+    pctLbl.Size                  = UDim2.new(1, 0, 1, 0)
+    pctLbl.BackgroundTransparency = 1
+    pctLbl.TextColor3            = Color3.fromRGB(255, 255, 255)
+    pctLbl.TextSize              = 10
+    pctLbl.Font                  = Enum.Font.GothamBold
+    pctLbl.Text                  = "0%"
+    pctLbl.Parent                = barBg
+
+    return function(level, maxLevel, mission)
+        level     = level     or 0
+        maxLevel  = maxLevel  or 16000
+        mission   = mission   or "Aguardando..."
+        levelLbl.Text   = "Level: " .. level .. "/" .. maxLevel
+        missionLbl.Text = "Missao: " .. mission
+        local pct = math.floor((level / maxLevel) * 100)
+        fill.Size   = UDim2.new(math.min(pct / 100, 1), 0, 1, 0)
+        pctLbl.Text = pct .. "%"
+    end
+end
+
+local function _GF_DestroyBar()
+    if _GF_BarGui then
+        pcall(function() _GF_BarGui:Destroy() end)
+        _GF_BarGui = nil
+    end
+end
+
+-- ═══════════════════════════════════════════════════════
+-- MENU EXP
+-- ═══════════════════════════════════════════════════════
+
+local expSec1 = v163.exp:AddSection("Farm Global por Nivel", true)
+expSec1:AddParagraph({
+    Title = "-[ FARM GLOBAL EXP ]-",
+    Content = "Farm automatico do nivel 0 ao 16000. Teleporte automatico de ilha baseado no seu nivel, encontra o NPC correto e usa SmartAttack (TP + hit).\n\nConfigure o metodo de TP e distancia na aba Config."
+})
+expSec1:AddSlider({
+    Title = "Delay entre ciclos (x0.01s)",
+    Min = 0, Max = 20, Default = 0, Increment = 1,
+    Callback = function(v) _G.GlobalNPCDelay = v * 0.01 end
+})
+expSec1:AddButton({
+    Title = "Teleportar para Ilha do Nivel",
+    Callback = function()
+        local qd = _GF_GetQuestForLevel()
+        if qd then
+            TeleportToIsland(qd.island)
+            dragonhub("Teleportando para " .. qd.island .. " [" .. qd.label .. "]")
+        else
+            dragonhub("Nenhuma ilha encontrada para seu nivel")
+        end
+    end
+})
+expSec1:AddToggle({
+    Title = "Farm Global EXP Ativo",
+    Default = false,
+    Callback = function(s)
+        _G.GlobalNPCFarm = s
+        if s then
+            local updateBar = _GF_CreateBar()
+            task.spawn(function()
+                _GF_Loop(updateBar)
+                _GF_DestroyBar()
+                _G.GlobalNPCFarm = false
+            end)
+            dragonhub("Farm Global EXP ativado!")
+        else
+            _GF_DestroyBar()
+            dragonhub("Farm Global EXP desativado.")
+        end
+    end
+})
+
+-- Loop principal do Farm Global (COMBINADO)
+local function _GF_Loop(updateBar)
+    local lastIsland    = ""
+    local noEnemyCount  = 0
+    local startTime     = tick()
+
+    while _G.GlobalNPCFarm and _G.DRAGONHUB_ACTIVE do
+        RunService.Heartbeat:Wait()
+        pcall(function()
+            if not IsCharacterOk() then
+                WaitForCharacter()
+                return
+            end
+
+            local currentLevel = _GF_GetLevel()
+            local questData    = _GF_GetQuestForLevel()
+            if not questData then return end
+
+            local currentIsland = questData.island
+            local h = hrp()
+            if not h then return end
+
+            -- Teleporte de ilha quando muda
+            if lastIsland ~= currentIsland then
+                lastIsland = currentIsland
+                TeleportToIsland(currentIsland)
+                task.wait(2)
+            end
+
+            -- Encontra NPC alvo pelo tipo
+            local npcTypeX = questData.npcType == "SlimeWarrior" and "Slime" or questData.npcType
+            local target = findNPC(npcTypeX, "IncludeUnderscore")
+
+            if target and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0 then
+                noEnemyCount = 0
+
+                -- Move ate o NPC e ataca usando SmartAttack
+                local npcPos = target.WorldPivot.Position
+                local islandName, islandData = GetClosestIsland(npcPos)
+
+                if moverParaNPC(target, islandName, islandData) then
+                    _G._InstantTarget = target
+                    repeat
+                        if not _G.GlobalNPCFarm or not _G.DRAGONHUB_ACTIVE then break end
+                        if not IsCharacterOk() then WaitForCharacter() break end
+                        if not target or not target.Parent then break end
+                        local th = target:FindFirstChild("Humanoid")
+                        if not th or th.Health <= 0 then break end
+                        if target:FindFirstChild("HumanoidRootPart") then
+                            SmartAttack(target)
+                        else
+                            break
+                        end
+                        task.wait()
+                    until not _G.GlobalNPCFarm
+                        or not _G.DRAGONHUB_ACTIVE
+                        or not target or not target.Parent
+                        or not target:FindFirstChild("Humanoid")
+                        or target.Humanoid.Health <= 0
+                        or not target:FindFirstChild("HumanoidRootPart")
+                        or not IsCharacterOk()
+                end
+
+                -- Busca proximo NPC do mesmo tipo (sem espera)
+                if _G.GlobalNPCFarm and _G.DRAGONHUB_ACTIVE then
+                    local nextTarget = findNPC(npcTypeX, "IncludeUnderscore")
+                    if nextTarget and nextTarget ~= target then
+                        local myH = hrp()
+                        local nxtHRP = nextTarget:FindFirstChild("HumanoidRootPart")
+                        if myH and nxtHRP and (myH.Position - nxtHRP.Position).Magnitude > (_G.Adis or 5) * 2 then
+                            local npcPos2 = nextTarget.WorldPivot.Position
+                            local iName2, iData2 = GetClosestIsland(npcPos2)
+                            moverParaNPC(nextTarget, iName2, iData2)
+                        end
+                    end
+                end
+            else
+                noEnemyCount += 1
+                if noEnemyCount > 200 then
+                    TeleportToIsland(currentIsland)
+                    noEnemyCount = 0
+                end
+            end
+
+            -- Atualiza barra de progresso
+            if updateBar and (tick() % 0.5 < 0.016) then
+                local timeSinceStart = tick() - startTime
+                local levelProgress = currentLevel - questData.minLevel
+                local totalNeeded = questData.maxLevel - questData.minLevel
+                local timeStr = ""
+                if levelProgress > 0 and timeSinceStart > 0 then
+                    local estimatedTime = ((timeSinceStart / levelProgress) * totalNeeded) - timeSinceStart
+                    if estimatedTime > 0 then
+                        timeStr = string.format(" | %dm%ds rest",
+                            math.floor(estimatedTime / 60),
+                            math.floor(estimatedTime % 60))
+                    end
+                end
+                local hpStr = string.format("%.0f%% HP", _GF_GetHP())
+                updateBar(currentLevel, 16000, questData.label .. " | " .. hpStr .. timeStr)
+            end
+        end)
+
+        if (_G.GlobalNPCDelay or 0) > 0 then
+            task.wait(_G.GlobalNPCDelay)
+        end
+    end
+end
+
+dragonhub("Script Carregado com Sucesso! Aproveite :3")
+
+task.spawn(function()
+    while _G.DRAGONHUB_ACTIVE do
+        pcall(SafetyMode)
+        task.wait()
+    end
+end)
