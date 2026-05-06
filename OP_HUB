@@ -325,7 +325,7 @@ local CFG_KEYS = {
     ModeAT       = "Above",
     SelectModeTP = "Tween",
     SpeedTweenS  = 190,
-    Adis         = 5,
+    Adis         = 20,
     AutoStatsMelee   = false,
     AutoStatsDefense = false,
     AutoStatsSword   = false,
@@ -369,7 +369,7 @@ local function CFG_Load()
         _G.SpeedTweenS  = _G.SpeedTweenS  or 190
         _G.SelectModeTP = _G.SelectModeTP or "Tween"
         _G.ModeAT       = _G.ModeAT       or "Above"
-        _G.Adis         = _G.Adis         or 11
+        _G.Adis         = _G.Adis         or 20
     end)
 end
 
@@ -1015,7 +1015,7 @@ _G.MultiHitMode   = false
 -- getAttackPos: retorna offset de posição relativa ao NPC (sem rotação que quebra o personagem)
 local function getAttackPos()
     local mode = _G.ModeAT or "Above"
-    local d = _G.Adis or 11
+    local d = _G.Adis or 20
     if mode == "Above" then
         -- Posição acima sem rotação no personagem
         return CFrame.new(0, d, 0)
@@ -1597,9 +1597,9 @@ local function _addSlider(tab, opts)
         lbl.Text=(opts.Title or "")..":  "..tostring(value)
         if opts.Callback then pcall(opts.Callback,value) end
     end
-    hit2.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag2=true upd(i.Position.X) end end)
-    hit2.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then drag2=false end end)
-    _uis.InputChanged:Connect(function(i) if drag2 and i.UserInputType==Enum.UserInputType.MouseMovement then upd(i.Position.X) end end)
+    hit2.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then drag2=true upd(i.Position.X) end end)
+    hit2.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then drag2=false end end)
+    _uis.InputChanged:Connect(function(i) if drag2 and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then upd(i.Position.X) end end)
     if opts.Callback then pcall(opts.Callback,value) end
 end
 
