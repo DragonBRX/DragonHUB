@@ -1004,7 +1004,7 @@ end
 -- ═══════════════════════════════════════════════════════
 
 _G.ModeAT = "Above"
-_G.Adis = 5
+_G.Adis = 20
 _G.MultiHitCount  = 3
 _G.AttackDelay    = 0
 _G.OrbitalAngle   = 0
@@ -1856,7 +1856,7 @@ Fish3:AddDropdown({ Title = "Selecionar Método", Options = {"Above","Behind","B
 Fish3:AddDropdown({ Title = "Método de Teleporte", Options = {"Tween","Instant"}, Default = "Tween", Multi = false, Callback = function(Option) _G.SelectModeTP = Option end })
 Fish3:AddSlider({ Title = "Cooldown de Teleporte", Min = 1, Max = 10, Default = TELEPORT_COOLDOWN, Increment = 1, Callback = function(value) TELEPORT_COOLDOWN = value end })
 Fish3:AddSlider({ Title = "Velocidade do Tween", Min = 1, Max = 360, Default = _G.SpeedTweenS, Increment = 1, Callback = function(value) _G.SpeedTweenS = value end })
-Fish3:AddSlider({ Title = "Distância de Farm", Min = 1, Max = 150, Default = _G.Adis, Increment = 1, Callback = function(value) _G.Adis = value end })
+Fish3:AddSlider({ Title = "Distância de Farm", Min = 1, Max = 150, Default = 20, Increment = 1, Callback = function(value) _G.Adis = value end })
 Fish3:AddToggle({ Title = "Sem Colisão", Default = true, Callback = function(Value) SetNoclip(Value) end })
 Fish3:AddToggle({ Title = "Melhorar FPS", Default = false, Callback = function(Value) if Value then BoostFps() end end })
 Fish3:AddToggle({
