@@ -298,7 +298,7 @@ local currentValue = tonumber(readfile(fileName)) or 0
 currentValue = currentValue + 1
 writefile(fileName, tostring(currentValue))
 
-_G.SpeedTweenS = 190
+_G.SpeedTweenS = 80
 _G.SelectModeTP = "Tween"
 local selectedWeapon = "None"
 
@@ -324,7 +324,7 @@ local CFG_KEYS = {
     OrbitalSpeed = 45,
     ModeAT       = "Above",
     SelectModeTP = "Tween",
-    SpeedTweenS  = 190,
+    SpeedTweenS  = 80,
     Adis         = 20,
     AutoStatsMelee   = false,
     AutoStatsDefense = false,
@@ -366,7 +366,7 @@ local function CFG_Load()
             end
         end
         if t["_weapon"] then selectedWeapon = t["_weapon"] end
-        _G.SpeedTweenS  = _G.SpeedTweenS  or 190
+        _G.SpeedTweenS  = _G.SpeedTweenS  or 80
         _G.SelectModeTP = _G.SelectModeTP or "Tween"
         _G.ModeAT       = _G.ModeAT       or "Above"
         _G.Adis         = _G.Adis         or 20
@@ -927,8 +927,8 @@ local function _anchorHRP(targetPos)
     ap.Attachment0 = att
     ap.Position = targetPos
     ap.MaxForce = math.huge
-    ap.MaxVelocity = 300
-    ap.Responsiveness = 200
+    ap.MaxVelocity = 100
+    ap.Responsiveness = 100
     ap.ApplyAtCenterOfMass = true
     ap.Parent = hrpNow
     _alignAtt = att
