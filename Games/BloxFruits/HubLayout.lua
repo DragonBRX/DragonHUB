@@ -313,6 +313,7 @@ Key="Misc",Title="Outros",World="All",Controls={
 {Type="Button",Title="Hop Server",World="All"},
 {Type="Button",Title="Hop to Lowest Players",World="All"},
 {Type="Button",Title="Hop to Lowest Pings Server",World="All"},
+{Type="Input",Title="JobID",World="All"},
 {Type="Button",Title="Teleport [Job ID]",World="All"},
 {Type="Button",Title="Copy JobID",World="All"},
 {Type="Button",Title="Open Awakenings Expert",World="All"},
