@@ -1,27 +1,37 @@
 # DragonHUB
 
-Carregamento:
+Código-fonte Lua organizado e carregado diretamente pelo Roblox.
+
+## Carregamento
 
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/DragonHUB.lua"))()
 ```
 
-O `DragonHUB.lua` abre o `DragonHUB-Loader.lua`. O Loader identifica a experiência pelo `GameId` ou pelos `PlaceId` configurados e abre o manifesto correspondente.
+`DragonHUB.lua` abre o loader, que identifica Blox Fruits e seleciona o modo escolhido pelo usuário.
 
-Atualmente o registro contém Blox Fruits com os IDs dos três Seas. Jogos com apenas um mapa podem usar somente um `PlaceId`; jogos com mundos diferentes podem registrar vários IDs.
+## Estrutura
 
-Todo o código executado fica aberto e legível em `Games/BloxFruits/Source`. O manifesto `Games/BloxFruits/Links.lua` aponta diretamente para essa pasta, sem wrappers de criptografia ou ofuscação.
+- `DragonHUB.lua`: ponto de entrada público.
+- `DragonHUB-Loader.lua`: identifica o jogo e carrega o manifesto.
+- `Games/BloxFruits/Links.lua`: reúne somente os arquivos Lua realmente executados.
+- `Games/BloxFruits/HubLayout.lua`: descreve abas e controles da interface.
+- `Games/BloxFruits/Source/UI.lua`: seletor inicial de modo.
+- `Games/BloxFruits/Source/HubUI.lua`: interface do modo HUB.
+- `Games/BloxFruits/Source/Runtime.lua`: implementação real das funções do script.
+- `Games/BloxFruits/Source/Modes`: inicializadores dos modos HUB e AUTOMÁTICO.
 
-No modo AUTOMÁTICO, os módulos agrupados são carregados antes do runtime. No modo HUB, `Games/BloxFruits/Functions.lua` fornece um link individual para cada botão e somente o módulo exato da função ativada é carregado.
+## Código-fonte
 
-A interface HUB é carregada antes do runtime por `Source/HubUI.lua`. Ela apresenta abas por categoria, toggles deslizantes, sliders de toque e mouse, botões e seletores. As escolhas feitas durante o carregamento são aplicadas quando o runtime registra os callbacks correspondentes.
+O projeto não usa criptografia, obfuscação, arquivos gerados por Python ou módulos vazios. A lógica real está em Lua e pode ser lida diretamente no repositório.
 
-Esta versão não contém a antiga pasta `Encrypted` nem o gerador `build.py`. Alterações feitas nos arquivos de `Source` são carregadas diretamente pelo HUB.
+Os antigos arquivos de `Source/Functions` e `Source/Modules` foram removidos porque continham apenas adaptadores genéricos. Eles não eram implementações independentes: todos encaminhavam a execução de volta para callbacks definidos em `Runtime.lua`.
 
-O modo HUB utiliza somente a interface própria do DragonHUB. O runtime funciona como adaptador sem interface, não cria janela secundária, não usa bibliotecas visuais externas, não carrega ícones de outros hubs e mantém os títulos sem emojis.
+`Runtime.lua` foi preservado como a fonte funcional principal porque suas rotinas compartilham estado, serviços e funções auxiliares. Os blocos comprimidos foram reorganizados com quebras de linha, mantendo a mesma sequência de tokens Lua.
 
-Os seletores abrem uma lista flutuante com rolagem e seleção única. Isso permite escolher diretamente frutas, materiais, armas, barcos e outras opções sem percorrer os valores com vários cliques.
+## Modos
 
-O menu de frutas consulta o estoque com segurança e permite atualizar a lista, comprar a fruta básica ou Mirage selecionada, escolher qualquer fruta no seletor do sniper e ativar a compra automática quando ela aparecer. A compra básica usa a mesma assinatura confirmada no código anterior: `PurchaseRawFruit`, nome selecionado e `false`.
+- `HUB`: carrega o layout, a interface e registra os callbacks reais do runtime.
+- `AUTOMATIC`: executa diretamente o runtime com a automação configurada.
 
-`Auto Random Fruit` envia a tentativa de giro imediatamente ao ser ativado e repete a chamada original a cada 0,1 segundo. `Random Fruit Now` executa uma tentativa direta sem depender do toggle. Regras ou respostas restantes são decididas pelo servidor do jogo, sem cálculo local de dinheiro ou espera inicial no DragonHUB.
+Nenhum dos modos depende de Python. Todos os arquivos necessários para execução estão publicados como Lua.

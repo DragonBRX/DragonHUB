@@ -1,14 +1,16 @@
-# DragonHUB — versão sem criptografia
+# Changelog
 
-Data: 14/08/2026
+## 14/08/2026 — organização do código-fonte
 
-## Alterações
+- Removidos os wrappers genéricos de `Source/Functions` e `Source/Modules`.
+- Removidos `Functions.lua`, `generate_functions.py` e `generate_hub_layout.py`.
+- Simplificado `Links.lua` para listar apenas arquivos realmente executados.
+- Simplificados os inicializadores dos modos HUB e AUTOMÁTICO.
+- O HUB agora chama diretamente os callbacks reais registrados em `Runtime.lua`.
+- Reformatados os blocos Lua comprimidos sem alterar sua sequência de tokens.
+- Atualizados README e auditoria para descrever a arquitetura real.
 
-- Removida a árvore `Games/BloxFruits/Encrypted`.
-- Removido o gerador de wrappers criptografados `build.py`.
-- `Games/BloxFruits/Links.lua` agora carrega interface, runtime, modos e módulos diretamente de `Games/BloxFruits/Source`.
-- `Games/BloxFruits/Functions.lua` agora carrega os 187 módulos individuais diretamente de `Source/Functions`.
-- `generate_functions.py` foi atualizado para continuar gerando links abertos.
-- Incluídos todos os 203 arquivos Lua legíveis necessários para o carregamento.
+## 14/08/2026 — remoção da árvore criptografada
 
-O comando de carregamento público permanece o mesmo depois que estes arquivos forem publicados na branch `main`.
+- Removida a antiga árvore `Games/BloxFruits/Encrypted`.
+- Mantido o carregamento público por `DragonHUB.lua`.
