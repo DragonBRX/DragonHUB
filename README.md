@@ -19,3 +19,5 @@ A interface HUB é carregada antes do runtime por `Encrypted/HubUI.lua`. Ela apr
 O modo HUB utiliza somente a interface própria do DragonHUB. O runtime funciona como adaptador sem interface, não cria janela secundária, não usa bibliotecas visuais externas, não carrega ícones de outros hubs e mantém os títulos sem emojis.
 
 Os seletores abrem uma lista flutuante com rolagem e seleção única. Isso permite escolher diretamente frutas, materiais, armas, barcos e outras opções sem percorrer os valores com vários cliques.
+
+`Auto Random Fruit` envia a tentativa de giro imediatamente ao ser ativado. Regras de preço e cooldown são decididas pelo servidor do jogo, sem bloqueios adicionais do DragonHUB.
