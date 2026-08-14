@@ -9,6 +9,8 @@ return {
         Sea3 = {7449423635, 100117331123089}
     },
     UI = Root .. "UI.lua",
+    HubUI = Root .. "HubUI.lua",
+    HubLayout = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/HubLayout.lua",
     Runtime = Root .. "Runtime.lua",
     Functions = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Functions.lua",
     Modes = {
