@@ -10,6 +10,7 @@ return {
     },
     UI = Root .. "UI.lua",
     Runtime = Root .. "Runtime.lua",
+    Functions = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Functions.lua",
     Modes = {
         AUTOMATIC = Root .. "Modes/Automatic.lua",
         HUB = Root .. "Modes/HUB.lua"

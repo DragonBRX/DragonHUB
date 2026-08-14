@@ -1,0 +1,9 @@
+local A="d52a9fda4d2deb92697d8062081786c2cc31939b6c6cd4c67c56c14c024bd0a1951688da55689bc9735f926a1020c2f6d72688d24e6386e22872917f01538cd5d82989de0d4ec7c37e51806c0603aef0dc299a957279c7db770eb76e015fc1be84318ece4407cfc9327080630148c5e0d26588d3446386db73408a211e5ac5f4d76dbfda4d61c4ce7158cd7c0846c2adea319dcf442486ca7c57eb6a034eaef1dc3189c94f2deba5"
+local K={185,69,252,187,33,13,166,175,18,51,225,15,109,42,164,131}
+local O=table.create(#A/2)
+local N=0
+for I=1,#A,2 do
+N=N+1
+O[N]=string.char(bit32.bxor(tonumber(string.sub(A,I,I+1),16),K[(N-1)%#K+1]))
+end
+return loadstring(table.concat(O))()
