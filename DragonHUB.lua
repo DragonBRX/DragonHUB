@@ -1,8 +1,5 @@
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  DETECTAR O MAR (SEA)
--- ═══════════════════════════════════════════════════════════════════════════════
 
 local PlaceId = game.PlaceId
 local World1 = PlaceId == 2753915549
@@ -17,9 +14,6 @@ end
 local SeaName = World1 and "Sea 1" or World2 and "Sea 2" or "Sea 3"
 print("[DragonHUB] Detectado: " .. SeaName)
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  SERVIÇOS
--- ═══════════════════════════════════════════════════════════════════════════════
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -35,15 +29,11 @@ local LocalPlayer = Players.LocalPlayer
 local CommF_ = ReplicatedStorage.Remotes.CommF_
 local CommE = ReplicatedStorage.Remotes.CommE
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  FLAGS GLOBAIS DE CONTROLE
--- ═══════════════════════════════════════════════════════════════════════════════
 
 _G.AutoFarm = false
 _G.ScriptRodando = false
 _G.FecharTudo = false
 
--- Configurações automáticas (o script decide sozinho)
 _G.Config = {
     BringMonster = true,
     BringMode = 375,
@@ -55,8 +45,46 @@ _G.Config = {
     StatPriority = "Melee",
     KillAt = 25,
     BypassTP = true,
-    PosY = 30
+    PosY = 30,
+    PlayerSafeRadius = 300,
+    AutoHop = true,
+    WeaponMode = "Melee",
 }
+
+local FrutasProibidas = {
+
+    ["Kitsune"] = true,
+    ["Rumble"] = true,
+    ["Quake"] = true,
+    ["Magma"] = true,
+    ["Gravity"] = true,
+    ["Venom"] = true,
+    ["Dragon"] = true,     -- transformação desloca o personagem
+    ["Phoenix"] = true,    -- voo pode quebrar posição de farm
+    ["Shadow"] = true,
+    ["Leopard"] = true,
+    -- Adicione mais conforme necessário
+}
+
+local FrutasSoClick = {
+    ["Dough"] = true,
+    ["Buddha"] = true,
+    ["Love"] = true,
+    ["Barrier"] = true,
+    ["Bomb"] = true,
+    ["Spike"] = true,
+    ["Spring"] = true,
+    ["Smoke"] = true,
+    ["Sand"] = true,
+    ["Ice"] = true,
+    ["Chop"] = true,
+    ["Flame"] = true,
+    ["Light"] = true,
+    ["Dark"] = true,
+    ["Rubber"] = true,
+    ["Paw"] = false, 
+}
+FrutasProibidas["Paw"] = true
 
 -- Variáveis de estado
 local Mon, NameQuest, LevelQuest, CFrameQuest, CFrameMon, NameMon
@@ -66,9 +94,100 @@ local PosMon = CFrame.new(0, 30, 0)
 local Type = 1
 local Pos = CFrame.new(0, 30, 0)
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  FUNÇÕES UTILITÁRIAS BÁSICAS
--- ═══════════════════════════════════════════════════════════════════════════════
+
+_G.TarefaAtual = 0        -- prioridade da tarefa em execução
+_G.TarefaNome = "Idle"    -- nome legível para debug/status
+_G.Hopando = false        -- evita múltiplos hops simultâneos
+
+-- Tenta assumir controle. Retorna true se conseguiu (prioridade >= atual)
+local function TomarControle(prioridade, nome)
+    if prioridade >= _G.TarefaAtual then
+        _G.TarefaAtual = prioridade
+        _G.TarefaNome = nome
+        return true
+    end
+    return false
+end
+
+-- Libera controle (só libera se for a mesma prioridade ou maior)
+local function LiberarControle(prioridade)
+    if prioridade >= _G.TarefaAtual then
+        _G.TarefaAtual = 0
+        _G.TarefaNome = "Idle"
+    end
+end
+
+
+local function Hop()
+    if _G.HopEstaExecutando then return end
+    _G.HopEstaExecutando = true
+    local PlaceID = game.PlaceId
+    local AllIDs = {}
+    local foundAnything = ""
+    local actualHour = os.date("!*t").hour
+    local function TPReturner()
+        local ok, Site = pcall(function()
+            local url = 'https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'
+            if foundAnything ~= "" then
+                url = url .. '&cursor=' .. foundAnything
+            end
+            return game:GetService("HttpService"):JSONDecode(game:HttpGet(url))
+        end)
+        if not ok or not Site then _G.HopEstaExecutando = false return end
+        if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
+            foundAnything = Site.nextPageCursor
+        end
+        local num = 0
+        for _, v in pairs(Site.data or {}) do
+            local Possible = true
+            local ID = tostring(v.id)
+            if tonumber(v.maxPlayers) > tonumber(v.playing) then
+                for _, Existing in pairs(AllIDs) do
+                    if num ~= 0 then
+                        if ID == tostring(Existing) then Possible = false end
+                    else
+                        if tonumber(actualHour) ~= tonumber(Existing) then
+                            AllIDs = {}
+                            table.insert(AllIDs, actualHour)
+                        end
+                    end
+                    num = num + 1
+                end
+                if Possible then
+                    table.insert(AllIDs, ID)
+                    task.wait()
+                    pcall(function()
+                        game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, LocalPlayer)
+                    end)
+                    task.wait(5)
+                end
+            end
+        end
+    end
+    while true do
+        pcall(TPReturner)
+        if foundAnything ~= "" then pcall(TPReturner) end
+        task.wait(1)
+    end
+end
+
+
+local function TemPlayerProximo()
+    local hrp = GetHRP and GetHRP()
+    if not hrp then return false end
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local pHRP = p.Character:FindFirstChild("HumanoidRootPart")
+            if pHRP then
+                local dist = (pHRP.Position - hrp.Position).Magnitude
+                if dist <= _G.Config.PlayerSafeRadius then
+                    return true, p.Name
+                end
+            end
+        end
+    end
+    return false
+end
 
 local function GetChar()
     return LocalPlayer.Character
@@ -110,9 +229,9 @@ local function CheckMaterial(name)
     return 0
 end
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  SISTEMA DE TELEPORTE
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local function TP(Pos)
     local hrp = GetHRP()
@@ -176,9 +295,9 @@ local function topos(Pos)
     tween:Play()
 end
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  SISTEMA DE EQUIPAR ARMAS
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local NotAutoEquip_flag = false
 
@@ -202,9 +321,9 @@ local function EquipWeapon(name)
     end)
 end
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  SISTEMA DE HAKI
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local function AutoHaki()
     pcall(function()
@@ -224,9 +343,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  SISTEMA DE FAST ATTACK (CORRIGIDO)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local function AttackFunction()
     pcall(function()
@@ -263,30 +382,172 @@ local function AttackFunction()
     end)
 end
 
+-- AttackFunction apenas modifica o framework (sem clicar na tela)
 spawn(function()
     while task.wait(0.03) do
-        if _G.Config.FastAttack and _G.AutoFarm then
+        if _G.Config.FastAttack and _G.AutoFarm and _G.TemAlvo then
             pcall(AttackFunction)
         end
     end
 end)
 
-spawn(function()
-    while task.wait(0.1) do
-        if _G.AutoFarm and _G.Config.FastAttack then
+-- 
+--  FUNÇÃO CENTRAL DE ATAQUE (todos os sistemas usam esta)
+-- 
+-- Recebe o Model do inimigo. Só clica enquanto o alvo estiver vivo.
+-- Detecta automaticamente se o jogador é Melee main ou Fruit main pelos stats.
+-- Frutas com knockback/bug ficam na blacklist: usam só click, sem Z/X.
+
+_G.TemAlvo = false
+
+-- Detecta a fruta equipada/armazenada do jogador
+local function GetFruitEquipada()
+    local ok, nome = pcall(function() return LocalPlayer.Data.DevilFruit.Value end)
+    if ok and nome and nome ~= "" then return nome end
+    for _, t in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if t:IsA("Tool") and t:FindFirstChild("Skills") then return t.Name end
+    end
+    for _, t in pairs(LocalPlayer.Character:GetChildren()) do
+        if t:IsA("Tool") and t:FindFirstChild("Skills") then return t.Name end
+    end
+    return nil
+end
+
+-- Detecta automaticamente qual stat é maior: Melee ou Fruit
+-- Retorna "Melee" ou "Fruit"
+local function DetectarBuild()
+    local ok, stats = pcall(function()
+        return {
+            melee = LocalPlayer.Data.Melee.Value,
+            fruit = LocalPlayer.Data.Blox_Fruit.Value,
+        }
+    end)
+    if not ok or not stats then return "Melee" end
+    -- Se Fruit tem pelo menos 100 pontos a mais que Melee, considera Fruit main
+    if stats.fruit > stats.melee + 100 then return "Fruit" end
+    return "Melee"
+end
+
+-- Decide qual arma equipar: Melee sempre exceto se for Fruit main com fruta segura
+local function EscolherArma()
+    local build = DetectarBuild()
+    if build ~= "Fruit" then return "Melee" end
+    -- É Fruit main — verifica se a fruta não está na blacklist
+    local fruta = GetFruitEquipada()
+    if not fruta then return "Melee" end
+    if FrutasProibidas[fruta] then
+        return "Melee"  -- fruta perigosa: usa Melee para evitar bugs
+    end
+    return "Fruit"  -- fruta segura com click
+end
+
+
+local function AttackTarget(v)
+    if not v then return end
+    local hrp = v:FindFirstChild("HumanoidRootPart")
+    local hum = v:FindFirstChild("Humanoid")
+    if not hrp or not hum then return end
+
+    _G.TemAlvo = true
+
+    -- Decide arma UMA vez no início (evita trocar arma todo frame)
+    local armaEscolhida = EscolherArma()
+    local frutaNome = GetFruitEquipada()
+    -- Fruta está na blacklist = nunca usa Z/X (só click)
+    local frutaBugada = frutaNome and FrutasProibidas[frutaNome] or false
+
+    pcall(function()
+        if armaEscolhida == "Fruit" and frutaNome then
+            local tool = LocalPlayer.Backpack:FindFirstChild(frutaNome)
+                or LocalPlayer.Character:FindFirstChild(frutaNome)
+            if tool then
+                LocalPlayer.Character.Humanoid:EquipTool(tool)
+            end
+        else
+            -- Melee: encontra o fighting style mais forte disponível
+            -- ou usa "Melee" como fallback
+            local bestStyle = GetBestFightingStyle and GetBestFightingStyle() or "Melee"
+            local styleTool = LocalPlayer.Backpack:FindFirstChild(bestStyle)
+                or LocalPlayer.Character:FindFirstChild(bestStyle)
+            if styleTool then
+                LocalPlayer.Character.Humanoid:EquipTool(styleTool)
+            else
+                -- último recurso: qualquer coisa que seja Melee
+                local fallback = LocalPlayer.Backpack:FindFirstChild("Melee")
+                    or LocalPlayer.Character:FindFirstChild("Melee")
+                if fallback then
+                    LocalPlayer.Character.Humanoid:EquipTool(fallback)
+                end
+            end
+        end
+    end)
+
+    AutoHaki()
+
+    local posicaoAntes = GetHRP() and GetHRP().Position
+
+    -- Loop de ataque: puxa mob e clica APENAS com alvo confirmado vivo
+    repeat
+        task.wait()
+        if not _G.AutoFarm or not v.Parent then break end
+        if _G.TarefaAtual >= 3 then break end  -- cede ao hop (player detectado)
+
+        -- Se fomos jogados para longe por knockback, reposiciona imediatamente
+        local myHRP = GetHRP()
+        if myHRP then
+            local distAlvo = (hrp.Position - myHRP.Position).Magnitude
+            if distAlvo > 40 then
+                -- Fomos jogados para longe — volta para perto do mob
+                TP1(hrp.CFrame * CFrame.new(0, 5, 0))
+            end
+        end
+
+        -- Mantém o mob preso
+        pcall(function()
+            hrp.CFrame = PosMon
+            hrp.CanCollide = false
+            hrp.Size = Vector3.new(60, 60, 60)
+            hum.WalkSpeed = 0
+            hum:ChangeState(14)
+        end)
+
+        -- Click de ataque (válido para Melee E para frutas com click)
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:Button1Down(Vector2.new(1280, 672))
+            task.wait(0.05)
+            VirtualUser:Button1Up(Vector2.new(1280, 672))
+        end)
+
+        -- Z/X: só se mob estiver com HP baixo E a fruta/arma não causar knockback
+        -- Frutas da blacklist: NUNCA usam Z/X (só click)
+        if not frutaBugada
+            and hum.MaxHealth > 0
+            and (hum.Health / hum.MaxHealth * 100) <= _G.Config.KillAt then
             pcall(function()
-                VirtualUser:CaptureController()
-                VirtualUser:Button1Down(Vector2.new(1280, 672))
-                task.wait(0.05)
-                VirtualUser:Button1Up(Vector2.new(1280, 672))
+                game:GetService("VirtualInputManager"):SendKeyEvent(true, "Z", false, game)
+                task.wait(0.08)
+                game:GetService("VirtualInputManager"):SendKeyEvent(false, "Z", false, game)
+            end)
+            pcall(function()
+                game:GetService("VirtualInputManager"):SendKeyEvent(true, "X", false, game)
+                task.wait(0.08)
+                game:GetService("VirtualInputManager"):SendKeyEvent(false, "X", false, game)
             end)
         end
-    end
-end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+    until hum.Health <= 0 or not v.Parent
+        or not _G.AutoFarm or _G.TarefaAtual >= 3
+
+    _G.TemAlvo = false
+end
+
+-- Exporta para uso global
+_G.AttackTarget = AttackTarget
+
+-- 
 --  SISTEMA DE BRING MOBS
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
     local rot = 0
@@ -339,9 +600,62 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
+--  MAGNET DE FRUTAS (puxa para o inventário, não vai até ela)
+-- 
+
+spawn(function()
+    while task.wait(1) do
+        pcall(function()
+            if not _G.AutoFarm then return end
+            local hrp = GetHRP()
+            if not hrp then return end
+            -- Procura fruta no workspace dentro de certo raio
+            for _, v in pairs(Workspace:GetChildren()) do
+                if v:IsA("Tool") and v:FindFirstChild("Handle") then
+                    local handle = v.Handle
+                    local dist = (handle.Position - hrp.Position).Magnitude
+                    if dist <= 3000 then
+                        -- Puxa a fruta via CFrame até o personagem (magnet)
+                        -- NÃO teleporta o personagem até a fruta
+                        handle.CFrame = hrp.CFrame * CFrame.new(0, 2, 0)
+                        task.wait(0.05)
+                        -- Tenta coletar
+                        CommF_:InvokeServer("Pickup", v)
+                    end
+                end
+            end
+        end)
+    end
+end)
+
+-- 
+--  DETECÇÃO DE JOGADORES + AUTO HOP
+-- 
+
+spawn(function()
+    while task.wait(5) do
+        pcall(function()
+            if not _G.AutoFarm then return end
+            if not _G.Config.AutoHop then return end
+            if _G.Hopando then return end
+            
+            local temPlayer, nomePly = TemPlayerProximo()
+            if temPlayer then
+                if _G.UpdateStatus then
+                    _G.UpdateStatus("Jogador próximo (" .. tostring(nomePly) .. ")! Trocando servidor...", Color3.fromRGB(255, 50, 50))
+                end
+                _G.Hopando = true
+                task.wait(2)
+                Hop()
+            end
+        end)
+    end
+end)
+
+-- 
 --  SISTEMA DE NOCLIP
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 RunService.Heartbeat:Connect(function()
     if _G.AutoFarm then
@@ -395,9 +709,9 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  MAPA DE QUESTS COMPLETO - SEA 1
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local QuestMap_Sea1 = {
     {minLv = 1, maxLv = 9, mon = "Bandit", quest = "BanditQuest1", questLv = 1,
@@ -484,9 +798,9 @@ local QuestMap_Sea1 = {
      mpos = CFrame.new(5441.951660, 42.502059, 4950.09375)},
 }
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  MAPA DE QUESTS COMPLETO - SEA 2
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local QuestMap_Sea2 = {
     {minLv = 700, maxLv = 724, mon = "Raider", quest = "Area1Quest", questLv = 1,
@@ -563,9 +877,9 @@ local QuestMap_Sea2 = {
      mpos = CFrame.new(-3352.901367, 285.015563, -10534.841796)},
 }
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  MAPA DE QUESTS COMPLETO - SEA 3
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local QuestMap_Sea3 = {
     {minLv = 1500, maxLv = 1524, mon = "Pirate Millionaire", quest = "PiratePortQuest", questLv = 1,
@@ -684,9 +998,9 @@ local QuestMap_Sea3 = {
      mpos = CFrame.new(-16347.4150390625, 92.09503936767578, 1122.335205078125)},
 }
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  FUNÇÃO CHECK QUEST
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local CurrentQuestData = nil
 
@@ -707,9 +1021,9 @@ local function CheckQuest()
     end
 end
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  ANTI-AFK
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Down(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
@@ -717,9 +1031,9 @@ LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Up(Vector2.new(0, 0), Workspace.CurrentCamera.CFrame)
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  INFINITE ENERGY
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
     while task.wait(0.1) do
@@ -732,9 +1046,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  REMOVE CAMERA SHAKE
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 pcall(function()
     local CamShake = require(ReplicatedStorage.Util.CameraShaker)
@@ -747,18 +1061,23 @@ end)
 print("[DragonHUB V2] Sistema base carregado!")
 
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 2: SISTEMAS AUTOMÁTICOS INTELIGENTES
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  AUTO FARM LEVEL PRINCIPAL
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
+--  AUTO FARM LEVEL PRINCIPAL (UMA TAREFA POR VEZ)
+-- 
+-- Prioridade 1: farm de level/quest (mais baixa — pode ser interrompida)
+-- Prioridade 2: boss próximo no mesmo servidor
+-- Prioridade 3: player detectado → hop (mais alta)
 
 spawn(function()
-    while task.wait(0.1) do
+    while task.wait(0.15) do
         pcall(function()
             if not _G.AutoFarm then return end
+            -- Se outra tarefa de prioridade maior estiver rodando, aguarda
+            if _G.TarefaAtual > 1 then return end
             
             local hrp = GetHRP()
             if not hrp then return end
@@ -772,6 +1091,9 @@ spawn(function()
             
             CheckQuest()
             if not CurrentQuestData then return end
+            
+            -- Assume controle com prioridade 1 (farm normal)
+            if not TomarControle(1, "Farm Level") then return end
             
             MyLevel = LocalPlayer.Data.Level.Value
             
@@ -801,43 +1123,43 @@ spawn(function()
                 end
             end
             
-            -- Pega a quest
+            -- Pega a quest (apenas uma por vez — sem pegar nova enquanto outra está ativa)
             if not questVisible then
                 StartMagnet = false
                 CheckQuest()
-                if not CurrentQuestData then return end
+                if not CurrentQuestData then LiberarControle(1) return end
                 
                 local distQ = (CFrameQuest.Position - hrp.Position).Magnitude
                 if distQ > 5 then
                     if _G.UpdateStatus then
                         _G.UpdateStatus("Indo ao NPC: " .. tostring(NameQuest), Color3.fromRGB(255, 200, 0))
                     end
-                    
                     if _G.Config.BypassTP and distQ > 1500 then
                         BTP(CFrameQuest)
                     else
                         TP1(CFrameQuest)
                     end
-                    
                     local t = 0
                     repeat
                         task.wait(0.1)
                         t = t + 0.1
                         hrp = GetHRP()
                         if not hrp then break end
+                        -- Interrompe se prioridade maior assumir
+                        if _G.TarefaAtual > 1 then return end
                     until (CFrameQuest.Position - hrp.Position).Magnitude <= 5 or t >= 10
                 end
                 
+                if _G.TarefaAtual > 1 then return end
                 if _G.UpdateStatus then
                     _G.UpdateStatus("Pegando quest: " .. tostring(NameQuest), Color3.fromRGB(0, 200, 255))
                 end
-                
                 CommF_:InvokeServer("StartQuest", NameQuest, LevelQuest)
                 task.wait(0.5)
                 StartMagnet = true
             end
             
-            -- Ataca os mobs
+            -- Ataca os mobs (loop interno que pode ser interrompido)
             if LocalPlayer.PlayerGui.Main.Quest.Visible then
                 StartMagnet = true
                 CheckQuest()
@@ -857,37 +1179,10 @@ spawn(function()
                                 if _G.UpdateStatus then
                                     _G.UpdateStatus("Atacando: " .. tostring(Mon), Color3.fromRGB(255, 80, 80))
                                 end
-                                
-                                repeat
-                                    task.wait()
-                                    EquipWeapon(_G.Config.SelectWeapon or "Melee")
-                                    AutoHaki()
-                                    
-                                    PosMon = v.HumanoidRootPart.CFrame
-                                    TP1(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                                    
-                                    v.HumanoidRootPart.CanCollide = false
-                                    v.Humanoid.WalkSpeed = 0
-                                    v.HumanoidRootPart.Size = Vector3.new(70, 70, 70)
-                                    StartMagnet = true
-                                    
-                                    -- Skills quando mob estiver com pouca vida
-                                    if v.Humanoid.Health / v.Humanoid.MaxHealth * 100 <= _G.Config.KillAt then
-                                        pcall(function()
-                                            game:GetService("VirtualInputManager"):SendKeyEvent(true, "Z", false, game)
-                                            task.wait(0.1)
-                                            game:GetService("VirtualInputManager"):SendKeyEvent(false, "Z", false, game)
-                                        end)
-                                        pcall(function()
-                                            game:GetService("VirtualInputManager"):SendKeyEvent(true, "X", false, game)
-                                            task.wait(0.1)
-                                            game:GetService("VirtualInputManager"):SendKeyEvent(false, "X", false, game)
-                                        end)
-                                    end
-                                until not _G.AutoFarm 
-                                    or v.Humanoid.Health <= 0 
-                                    or not v.Parent 
-                                    or not LocalPlayer.PlayerGui.Main.Quest.Visible
+                                StartMagnet = true
+                                -- Usa a função central de ataque (Melee, sem spam aleatório)
+                                AttackTarget(v)
+                                StartMagnet = false
                             else
                                 StartMagnet = false
                                 CommF_:InvokeServer("AbandonQuest")
@@ -895,7 +1190,6 @@ spawn(function()
                         end
                     end
                 else
-                    -- Mob não encontrado - vai até a posição de spawn
                     if _G.UpdateStatus then
                         _G.UpdateStatus("Procurando: " .. tostring(Mon), Color3.fromRGB(180, 180, 255))
                     end
@@ -904,13 +1198,15 @@ spawn(function()
                     StartMagnet = false
                 end
             end
+            
+            LiberarControle(1)
         end)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO STATS
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
     while task.wait(2) do
@@ -931,9 +1227,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO SUPERHUMAN (EVOLUÇÃO COMPLETA)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local FightingStyles = {
     "Godhuman", "Dragon Talon", "Electric Claw", "Sharkman Karate",
@@ -1014,9 +1310,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO BUY HAKI ABILITIES
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
     task.wait(10)
@@ -1030,9 +1326,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO REDEEM CODES
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local x2Code = {
     "Sub2Fer999", "Sub2OfficialNoobie", "Sub2Daigrock", "Enyu_yt", "Starcodeheo",
@@ -1054,9 +1350,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO SECOND SEA (COMPLETO)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local function AutoSecondSeaQuest()
     if not World1 then return end
@@ -1108,9 +1404,9 @@ local function AutoSecondSeaQuest()
     end
 end
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO THIRD SEA (COMPLETO)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local function AutoThirdSeaQuest()
     if not World2 then return end
@@ -1128,35 +1424,42 @@ local function AutoThirdSeaQuest()
     end
 end
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  VERIFICADOR INTELIGENTE DE PROGRESSO
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
-    while task.wait(10) do
+    while task.wait(15) do
         pcall(function()
             if not _G.AutoFarm then return end
-            
+            if _G.TarefaAtual >= 1 then return end  -- não interrompe tarefa ativa
+
             MyLevel = LocalPlayer.Data.Level.Value
-            
+
             -- Verifica Second Sea
             if World1 and MyLevel >= 700 then
-                AutoSecondSeaQuest()
+                if TomarControle(1, "Viagem Second Sea") then
+                    AutoSecondSeaQuest()
+                    LiberarControle(1)
+                end
                 return
             end
-            
+
             -- Verifica Third Sea
             if World2 and MyLevel >= 1500 then
-                AutoThirdSeaQuest()
+                if TomarControle(1, "Viagem Third Sea") then
+                    AutoThirdSeaQuest()
+                    LiberarControle(1)
+                end
                 return
             end
         end)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
---  PROTEÇÃO ANTI-MORTE
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
+--  PROTEÇÃO ANTI-MORTE (sempre ativa, reseta o sistema de prioridade)
+-- 
 
 spawn(function()
     while task.wait(1) do
@@ -1168,6 +1471,9 @@ spawn(function()
                 if _G.UpdateStatus then
                     _G.UpdateStatus("Morreu! Aguardando respawn...", Color3.fromRGB(255, 50, 50))
                 end
+                -- Reseta sistema de prioridade ao morrer
+                _G.TarefaAtual = 0
+                _G.TarefaNome = "Idle"
                 _G.AutoFarm = false
                 repeat task.wait(0.5) until GetChar() ~= char
                 task.wait(5)
@@ -1183,13 +1489,13 @@ end)
 print("[DragonHUB V2] Sistemas automáticos carregados!")
 
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 3: QUESTS DE ITENS AUTOMÁTICAS
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO SABER (SEA 1)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local SaberCompleted = false
 
@@ -1198,85 +1504,24 @@ spawn(function()
         pcall(function()
             if SaberCompleted then return end
             if not World1 then return end
+            if not _G.AutoFarm then return end
+            -- Só executa se nenhuma tarefa de prioridade >= 1 estiver ativa
+            if _G.TarefaAtual >= 1 then return end
             if HasWeapon("Saber") then
                 SaberCompleted = true
                 return
             end
-            
             local lv = LocalPlayer.Data.Level.Value
             if lv < 200 then return end
-            
+            if not TomarControle(1, "Quest Saber") then return end
             if _G.UpdateStatus then
                 _G.UpdateStatus("Fazendo quest da Saber...", Color3.fromRGB(255, 200, 0))
             end
-            
-            -- Falar com o NPC da Saber
             local shanks = Workspace:FindFirstChild("Shanks") or Workspace.Map:FindFirstChild("Shanks")
             if shanks then
-                repeat
-                    task.wait()
-                    TP(shanks.CFrame * CFrame.new(0, 0, 3))
-                until (shanks.Position - GetHRP().Position).Magnitude <= 5
-                task.wait(1)
-                CommF_:InvokeServer("SaberExpert", "talk")
-                task.wait(0.5)
-            end
-            
-            -- Verificar se completou a quest
-            local result = CommF_:InvokeServer("ProQuestProgress", "GetSaber")
-            if result and result ~= "Not Started" then
-                SaberCompleted = true
-                if _G.UpdateStatus then
-                    _G.UpdateStatus("Quest da Saber completada!", Color3.fromRGB(0, 255, 100))
+                AttackTarget(v)
                 end
             end
-        end)
-    end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  AUTO BARTILO (SEA 2)
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local BartiloCompleted = false
-
-spawn(function()
-    while task.wait(5) do
-        pcall(function()
-            if BartiloCompleted then return end
-            if not World2 then return end
-            if HasWeapon("Pole (2nd Form)") or HasWeapon("True Triple Katana") then
-                BartiloCompleted = true
-                return
-            end
-            
-            local lv = LocalPlayer.Data.Level.Value
-            if lv < 850 then return end
-            
-            if _G.UpdateStatus then
-                _G.UpdateStatus("Fazendo quest do Bartilo...", Color3.fromRGB(255, 200, 0))
-            end
-            
-            CommF_:InvokeServer("BartiloQuest", "Start")
-            task.wait(0.5)
-            
-            -- Matar 50 Swan Pirates
-            for _, v in pairs(Workspace.Enemies:GetChildren()) do
-                if v.Name == "Swan Pirate" and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                    repeat
-                        task.wait()
-                        EquipWeapon(GetBestFightingStyle())
-                        AutoHaki()
-                        TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                        v.HumanoidRootPart.CanCollide = false
-                        v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                        VirtualUser:CaptureController()
-                        VirtualUser:Button1Down(Vector2.new(1280, 672))
-                    until v.Humanoid.Health <= 0 or not v.Parent
-                end
-            end
-            
-            -- Verificar se completou
             local result = CommF_:InvokeServer("BartiloQuest", "Check")
             if result and result == "Completed" then
                 BartiloCompleted = true
@@ -1284,117 +1529,54 @@ spawn(function()
                     _G.UpdateStatus("Quest do Bartilo completada!", Color3.fromRGB(0, 255, 100))
                 end
             end
+            LiberarControle(1)
         end)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO RENGOKU (SEA 2)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local RengokuCompleted = false
 
 spawn(function()
-    while task.wait(10) do
+    while task.wait(15) do
         pcall(function()
             if RengokuCompleted then return end
             if not World2 then return end
+            if not _G.AutoFarm then return end
+            if _G.TarefaAtual >= 1 then return end
             if HasWeapon("Rengoku") then
                 RengokuCompleted = true
                 return
             end
-            
             local lv = LocalPlayer.Data.Level.Value
             if lv < 1100 then return end
-            
-            -- Verificar se tem a chave
             local hasKey = CheckItem("Hidden Key")
-            if not hasKey then
-                -- Farmar Ectoplasm para comprar a chave
-                if _G.UpdateStatus then
-                    _G.UpdateStatus("Farmando Ectoplasm para Rengoku...", Color3.fromRGB(255, 200, 0))
-                end
-                return
-            end
-            
+            if not hasKey then return end
+            if not TomarControle(1, "Quest Rengoku") then return end
             if _G.UpdateStatus then
                 _G.UpdateStatus("Pegando Rengoku...", Color3.fromRGB(255, 200, 0))
             end
-            
-            -- Ir até a caverna do Rengoku
             local rengokuPos = CFrame.new(-1410.6837158203125, 5000.60595703125, -4361.705078125)
-            repeat
-                task.wait()
-                TP(rengokuPos)
-            until (rengokuPos.Position - GetHRP().Position).Magnitude <= 5
-            
-            task.wait(1)
-            CommF_:InvokeServer("RengokuQuest", "Check")
-            task.wait(0.5)
-            CommF_:InvokeServer("RengokuQuest", "GetWeapon")
-            
-            if HasWeapon("Rengoku") then
-                RengokuCompleted = true
-                if _G.UpdateStatus then
-                    _G.UpdateStatus("Rengoku obtida!", Color3.fromRGB(0, 255, 100))
-                end
-            end
-        end)
-    end
-end)
-
--- ═══════════════════════════════════════════════════════════════════════════════
---  AUTO POLE (SEA 2)
--- ═══════════════════════════════════════════════════════════════════════════════
-
-local PoleCompleted = false
-
-spawn(function()
-    while task.wait(10) do
-        pcall(function()
-            if PoleCompleted then return end
-            if not World2 then return end
-            if HasWeapon("Pole (2nd Form)") then
-                PoleCompleted = true
-                return
-            end
-            
-            local lv = LocalPlayer.Data.Level.Value
-            if lv < 800 then return end
-            
-            if _G.UpdateStatus then
-                _G.UpdateStatus("Farmando Pole (2nd Form)...", Color3.fromRGB(255, 200, 0))
-            end
-            
-            -- Procurar o boss Thunder God
-            for _, v in pairs(Workspace.Enemies:GetChildren()) do
-                if v.Name == "Thunder God" and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                    repeat
-                        task.wait()
-                        EquipWeapon(GetBestFightingStyle())
-                        AutoHaki()
-                        TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                        v.HumanoidRootPart.CanCollide = false
-                        v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                        VirtualUser:CaptureController()
-                        VirtualUser:Button1Down(Vector2.new(1280, 672))
-                    until v.Humanoid.Health <= 0 or not v.Parent
-                    
+            AttackTarget(v)
                     if HasWeapon("Pole (2nd Form)") then
                         PoleCompleted = true
                         if _G.UpdateStatus then
                             _G.UpdateStatus("Pole (2nd Form) obtida!", Color3.fromRGB(0, 255, 100))
                         end
                     end
+                    LiberarControle(2)
                 end
             end
         end)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO DARK DAGGER (SEA 2)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local DarkDaggerCompleted = false
 
@@ -1403,94 +1585,76 @@ spawn(function()
         pcall(function()
             if DarkDaggerCompleted then return end
             if not World2 then return end
+            if not _G.AutoFarm then return end
+            if _G.TarefaAtual >= 2 then return end
             if HasWeapon("Dark Dagger") then
                 DarkDaggerCompleted = true
                 return
             end
-            
             local lv = LocalPlayer.Data.Level.Value
             if lv < 1000 then return end
-            
-            if _G.UpdateStatus then
-                _G.UpdateStatus("Farmando Dark Dagger...", Color3.fromRGB(255, 200, 0))
-            end
-            
-            -- Procurar o boss Darkbeard
+            -- Dark Dagger vem do boss Darkbeard — prioridade 2
             for _, v in pairs(Workspace.Enemies:GetChildren()) do
                 if v.Name == "Darkbeard" and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                    repeat
-                        task.wait()
-                        EquipWeapon(GetBestFightingStyle())
-                        AutoHaki()
-                        TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                        v.HumanoidRootPart.CanCollide = false
-                        v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                        VirtualUser:CaptureController()
-                        VirtualUser:Button1Down(Vector2.new(1280, 672))
-                    until v.Humanoid.Health <= 0 or not v.Parent
-                    
+                    if not TomarControle(2, "Boss Darkbeard (Dark Dagger)") then return end
+                    if _G.UpdateStatus then
+                        _G.UpdateStatus("Farmando Dark Dagger — Darkbeard...", Color3.fromRGB(255, 200, 0))
+                    end
+                    AttackTarget(v)
                     if HasWeapon("Dark Dagger") then
                         DarkDaggerCompleted = true
                         if _G.UpdateStatus then
                             _G.UpdateStatus("Dark Dagger obtida!", Color3.fromRGB(0, 255, 100))
                         end
                     end
+                    LiberarControle(2)
                 end
             end
         end)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO ECTOPLASM FARM (SEA 2)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local EctoplasmFarm = false
 
 spawn(function()
-    while task.wait(10) do
+    while task.wait(15) do
         pcall(function()
             if not World2 then return end
-            
+            if not _G.AutoFarm then return end
+            if _G.TarefaAtual >= 1 then return end
+
             local ectoplasm = CheckMaterial("Ectoplasm")
             if ectoplasm >= 250 then return end
-            
+
+            if not TomarControle(1, "Farm Ectoplasm") then return end
             EctoplasmFarm = true
             if _G.UpdateStatus then
                 _G.UpdateStatus("Farmando Ectoplasm: " .. ectoplasm .. "/250", Color3.fromRGB(255, 200, 0))
             end
-            
-            -- Farmar em Barco Fantasma
             local shipPos = CFrame.new(923.21252441406, 126.9760055542, 32852.83203125)
             if (shipPos.Position - GetHRP().Position).Magnitude > 10000 then
                 CommF_:InvokeServer("requestEntrance", Vector3.new(923.21252441406, 126.9760055542, 32852.83203125))
                 task.wait(2)
             end
-            
             for _, v in pairs(Workspace.Enemies:GetChildren()) do
                 if (v.Name == "Ship Deckhand" or v.Name == "Ship Engineer" or v.Name == "Ship Steward" or v.Name == "Ship Officer")
                     and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                    repeat
-                        task.wait()
-                        EquipWeapon(GetBestFightingStyle())
-                        AutoHaki()
-                        TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                        v.HumanoidRootPart.CanCollide = false
-                        v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                        VirtualUser:CaptureController()
-                        VirtualUser:Button1Down(Vector2.new(1280, 672))
-                    until v.Humanoid.Health <= 0 or not v.Parent
+                    AttackTarget(v)
                 end
             end
-            
             EctoplasmFarm = false
+            LiberarControle(1)
         end)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO FARM BOSSES
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local BossPriority = {
     -- Sea 1
@@ -1503,33 +1667,39 @@ local BossPriority = {
     "Beautiful Pirate", "Longma", "Cake Queen", "Soul Reaper"
 }
 
+-- Boss farm roda com prioridade 2 — interrompe farm normal (1), mas cede ao hop (3)
 spawn(function()
-    while task.wait(10) do
+    while task.wait(3) do
         pcall(function()
             if not _G.AutoFarm then return end
-            if EctoplasmFarm then return end
-            
+            -- Hop tem prioridade 3, não entramos se hop estiver ativo
+            if _G.TarefaAtual >= 3 then return end
+
             for _, bossName in ipairs(BossPriority) do
                 for _, v in pairs(Workspace.Enemies:GetChildren()) do
-                    if v.Name == bossName and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                    if v.Name == bossName
+                        and v:FindFirstChild("Humanoid")
+                        and v:FindFirstChild("HumanoidRootPart")
+                        and v.Humanoid.Health > 0 then
+
+                        -- Assume controle com prioridade 2 (boss)
+                        if not TomarControle(2, "Boss: " .. bossName) then break end
+
                         if _G.UpdateStatus then
-                            _G.UpdateStatus("Matando Boss: " .. bossName, Color3.fromRGB(255, 100, 100))
+                            _G.UpdateStatus("Boss encontrado: " .. bossName .. " — Atacando!", Color3.fromRGB(255, 80, 0))
                         end
-                        
-                        repeat
-                            task.wait()
-                            EquipWeapon(GetBestFightingStyle())
-                            AutoHaki()
-                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                            v.HumanoidRootPart.CanCollide = false
-                            v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                            VirtualUser:CaptureController()
-                            VirtualUser:Button1Down(Vector2.new(1280, 672))
-                        until v.Humanoid.Health <= 0 or not v.Parent
-                        
+
+                        -- Abandona quest de level temporariamente
+                        pcall(function() CommF_:InvokeServer("AbandonQuest") end)
+                        StartMagnet = false
+
+                        AttackTarget(v)
+                            or _G.TarefaAtual >= 3 or not _G.AutoFarm
+
                         if _G.UpdateStatus then
                             _G.UpdateStatus("Boss " .. bossName .. " morto!", Color3.fromRGB(0, 255, 100))
                         end
+                        LiberarControle(2)
                         task.wait(2)
                     end
                 end
@@ -1538,59 +1708,35 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  AUTO ELITE HUNTER (SEA 3)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
     while task.wait(10) do
         pcall(function()
             if not World3 then return end
-            
+            if not _G.AutoFarm then return end
+            if _G.TarefaAtual >= 3 then return end
+
             MyLevel = LocalPlayer.Data.Level.Value
             if MyLevel < 1500 then return end
-            
+
             -- Verificar se tem quest de Elite Hunter
             local questTitle = ""
             pcall(function()
                 questTitle = LocalPlayer.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text
             end)
-            
+
             if not string.find(questTitle, "Elite Hunter") then
-                -- Pegar quest
+                if not TomarControle(2, "Elite Hunter Quest") then return end
                 local elitePos = CFrame.new(-5411.22021484375, 313.7965393066406, -2826.278076171875)
-                repeat
-                    task.wait()
-                    TP(elitePos)
-                until (elitePos.Position - GetHRP().Position).Magnitude <= 5
-                
-                task.wait(1)
-                CommF_:InvokeServer("EliteHunter")
-            end
-            
-            -- Procurar Elite Boss
-            local eliteBosses = {"Diablo", "Deandre", "Urban"}
-            for _, bossName in ipairs(eliteBosses) do
-                for _, v in pairs(Workspace.Enemies:GetChildren()) do
-                    if v.Name == bossName and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                        if _G.UpdateStatus then
-                            _G.UpdateStatus("Matando Elite: " .. bossName, Color3.fromRGB(255, 100, 100))
-                        end
-                        
-                        repeat
-                            task.wait()
-                            EquipWeapon(GetBestFightingStyle())
-                            AutoHaki()
-                            TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                            v.HumanoidRootPart.CanCollide = false
-                            v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                            VirtualUser:CaptureController()
-                            VirtualUser:Button1Down(Vector2.new(1280, 672))
-                        until v.Humanoid.Health <= 0 or not v.Parent
-                        
+                AttackTarget(v)
+                            or _G.TarefaAtual >= 3 or not _G.AutoFarm
                         if _G.UpdateStatus then
                             _G.UpdateStatus("Elite " .. bossName .. " morto!", Color3.fromRGB(0, 255, 100))
                         end
+                        LiberarControle(2)
                     end
                 end
             end
@@ -1601,9 +1747,9 @@ end)
 print("[DragonHUB V2] Quests de itens carregadas!")
 
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 4: ESP SYSTEM
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local ESP = {
     Player = false,
@@ -1880,9 +2026,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 5: INTERFACE SIMPLES (LOADER + CONTROLES)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 if CoreGui:FindFirstChild("DragonHubV2Auto") then
     CoreGui.DragonHubV2Auto:Destroy()
@@ -2042,15 +2188,17 @@ task.spawn(function()
         if _G.FecharTudo then break end
         if not TrackerFrame or not TrackerFrame.Visible then continue end
         if not _G.ScriptRodando then continue end
-        pcall(function()
-            local lv = LocalPlayer.Data and LocalPlayer.Data.Level and LocalPlayer.Data.Level.Value or 0
-            local sea = SeaName
-            local mobAtual = tostring(Mon or "Detectando...")
-            _G.UpdateStatus(
-                string.format("[%s] Lv %d | %s", sea, lv, mobAtual),
-                Color3.fromRGB(255, 255, 255)
-            )
-        end)
+        -- Só atualiza o status "geral" se nenhuma tarefa específica estiver mostrando
+        if _G.TarefaAtual == 0 then
+            pcall(function()
+                local lv = LocalPlayer.Data and LocalPlayer.Data.Level and LocalPlayer.Data.Level.Value or 0
+                local sea = SeaName
+                _G.UpdateStatus(
+                    string.format("[%s] Lv %d | Idle — aguardando...", sea, lv),
+                    Color3.fromRGB(180, 180, 180)
+                )
+            end)
+        end
     end
 end)
 
@@ -2084,11 +2232,11 @@ task.spawn(function()
     _G.UpdateStatus("Aguardando START...", Color3.fromRGB(180, 180, 180))
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  MENSAGEM FINAL
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
-print("═══════════════════════════════════════════════════════════")
+print("")
 print("[DragonHUB V2] SISTEMA COMPLETO CARREGADO!")
 print("[DragonHUB V2] Sea: " .. SeaName)
 print("[DragonHUB V2] Funcionalidades:")
@@ -2111,12 +2259,12 @@ print("  - Auto Stats")
 print("  - Auto Buy Abilities")
 print("  - Auto Redeem Codes")
 print("[DragonHUB V2] Clique START para iniciar!")
-print("═══════════════════════════════════════════════════════════")
+print("")
 
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 6: AUTO MASTERY SYSTEM
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 -- Auto Mastery Fruit
 spawn(function()
@@ -2207,9 +2355,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 7: TELEPORTES PARA ILHAS
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local IslandPositions = {
     -- Sea 1
@@ -2253,9 +2401,9 @@ local IslandPositions = {
     ["Tiki Island"] = CFrame.new(-16547.748046875, 61.13533401489258, -173.41360473632812),
 }
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 8: AUTO FARM MATERIAIS
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local Materials = {
     ["Magma Ore"] = {mon = "Military Soldier", world = 1},
@@ -2276,41 +2424,35 @@ spawn(function()
     while task.wait(30) do
         pcall(function()
             if not _G.AutoFarm then return end
-            
+            -- Materiais são baixa prioridade — só quando absolutamente nada está ativo
+            if _G.TarefaAtual >= 1 then return end
+
             for materialName, data in pairs(Materials) do
                 local currentWorld = World1 and 1 or World2 and 2 or 3
                 if data.world ~= currentWorld then continue end
-                
+
                 local count = CheckMaterial(materialName)
                 if count < 20 then
+                    if not TomarControle(1, "Material: " .. materialName) then break end
                     if _G.UpdateStatus then
                         _G.UpdateStatus("Farmando " .. materialName .. ": " .. count .. "/20", Color3.fromRGB(255, 200, 0))
                     end
-                    
-                    -- Procurar o mob específico
                     for _, v in pairs(Workspace.Enemies:GetChildren()) do
                         if v.Name == data.mon and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                            repeat
-                                task.wait()
-                                EquipWeapon(GetBestFightingStyle())
-                                AutoHaki()
-                                TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                                v.HumanoidRootPart.CanCollide = false
-                                v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                                VirtualUser:CaptureController()
-                                VirtualUser:Button1Down(Vector2.new(1280, 672))
-                            until v.Humanoid.Health <= 0 or not v.Parent
+                            AttackTarget(v)
                         end
                     end
+                    LiberarControle(1)
+                    break  -- Uma material por ciclo de 30s
                 end
             end
         end)
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 9: MAIS BOSSES
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 local AllBosses = {
     -- Sea 1
@@ -2349,9 +2491,9 @@ local AllBosses = {
     ["Soul Reaper"] = {level = 2100, pos = CFrame.new(-9524.23438, 316.90329, 6693.14844)},
 }
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 10: GODHUMAN EVOLUTION (SEA 3)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
     while task.wait(10) do
@@ -2419,9 +2561,9 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 11: CAKE PRINCE / DOUGH KING FARM
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
     while task.wait(10) do
@@ -2435,16 +2577,7 @@ spawn(function()
                         _G.UpdateStatus("Matando Cake Prince!", Color3.fromRGB(255, 100, 100))
                     end
                     
-                    repeat
-                        task.wait()
-                        EquipWeapon(GetBestFightingStyle())
-                        AutoHaki()
-                        TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                        v.HumanoidRootPart.CanCollide = false
-                        v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                        VirtualUser:CaptureController()
-                        VirtualUser:Button1Down(Vector2.new(1280, 672))
-                    until v.Humanoid.Health <= 0 or not v.Parent
+                    AttackTarget(v)
                     
                     if _G.UpdateStatus then
                         _G.UpdateStatus("Cake Prince morto!", Color3.fromRGB(0, 255, 100))
@@ -2459,16 +2592,7 @@ spawn(function()
                         _G.UpdateStatus("Matando Dough King!", Color3.fromRGB(255, 100, 100))
                     end
                     
-                    repeat
-                        task.wait()
-                        EquipWeapon(GetBestFightingStyle())
-                        AutoHaki()
-                        TP(v.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0))
-                        v.HumanoidRootPart.CanCollide = false
-                        v.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                        VirtualUser:CaptureController()
-                        VirtualUser:Button1Down(Vector2.new(1280, 672))
-                    until v.Humanoid.Health <= 0 or not v.Parent
+                    AttackTarget(v)
                     
                     if _G.UpdateStatus then
                         _G.UpdateStatus("Dough King morto!", Color3.fromRGB(0, 255, 100))
@@ -2479,16 +2603,15 @@ spawn(function()
     end
 end)
 
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 --  PARTE 12: OBSERVATION HAKI V2 (SEA 3)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- 
 
 spawn(function()
     while task.wait(30) do
         pcall(function()
             if not World3 then return end
             
-            -- Verificar se já tem Observation V2
             local result = CommF_:InvokeServer("BuyObservationHaki", "Check")
             if result and result == 2 then return end
             
@@ -2499,7 +2622,6 @@ spawn(function()
                 _G.UpdateStatus("Fazendo quest Observation Haki V2...", Color3.fromRGB(255, 200, 0))
             end
             
-            -- Ir até o NPC
             local npcPos = CFrame.new(-12471.169921875, 374.94024658203, -7551.677734375)
             repeat
                 task.wait()
