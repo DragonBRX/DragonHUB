@@ -1,10 +1,132 @@
+do
+    local Players = game:GetService("Players")
+    local Player = Players.LocalPlayer or Players.PlayerAdded:Wait()
+    local PlayerGui = Player:WaitForChild("PlayerGui")
+    _G.DragonManualFluent = nil
+    _G.DragonHUBInterfaceReady = nil
+    for _, Name in ipairs({"NagaxHUBUI", "DragonHUBInterface", "ControlButtonGUI", "DragonHUBModeSelector"}) do
+        local Existing = PlayerGui:FindFirstChild(Name)
+        if Existing then Existing:Destroy() end
+        pcall(function()
+            local CoreExisting = game:GetService("CoreGui"):FindFirstChild(Name)
+            if CoreExisting then CoreExisting:Destroy() end
+        end)
+    end
+    local PlaceId = game.PlaceId
+    local WorldName = nil
+    if PlaceId == 2753915549 or PlaceId == 85211729168715 then
+        WorldName = "Sea 1"
+    elseif PlaceId == 4442272183 or PlaceId == 79091703265657 then
+        WorldName = "Sea 2"
+    elseif PlaceId == 7449423635 or PlaceId == 100117331123089 then
+        WorldName = "Sea 3"
+    end
+    _G.DragonDetectedGame = WorldName and "Blox Fruits" or "Unsupported"
+    _G.DragonDetectedWorld = WorldName or "Unknown"
+    _G.DragonSelectedMode = nil
+    _G.DragonAutoEnabled = false
+    _G.DragonStartRequested = false
+    _G.Random_Auto = false
+    _G.DragonAttackDelay = tonumber(_G.DragonAttackDelay) or 0.2
+    local Old = PlayerGui:FindFirstChild("DragonHUBModeSelector")
+    if Old then Old:Destroy() end
+    local Gui = Instance.new("ScreenGui")
+    Gui.Name = "DragonHUBModeSelector"
+    Gui.ResetOnSpawn = false
+    Gui.IgnoreGuiInset = true
+    Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    Gui.Parent = PlayerGui
+    local Main = Instance.new("Frame")
+    Main.Size = UDim2.new(0, 430, 0, 190)
+    Main.Position = UDim2.new(0.5, -215, 0.5, -95)
+    Main.BackgroundColor3 = Color3.fromRGB(12, 13, 21)
+    Main.BorderSizePixel = 0
+    Main.Parent = Gui
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 14)
+    MainCorner.Parent = Main
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = Color3.fromRGB(75, 78, 120)
+    MainStroke.Thickness = 1
+    MainStroke.Parent = Main
+    local Header = Instance.new("TextLabel")
+    Header.Size = UDim2.new(1, -24, 0, 34)
+    Header.Position = UDim2.new(0, 12, 0, 10)
+    Header.BackgroundTransparency = 1
+    Header.Text = "DragonHUB"
+    Header.TextColor3 = Color3.fromRGB(238, 238, 255)
+    Header.TextSize = 18
+    Header.Font = Enum.Font.GothamBold
+    Header.Parent = Main
+    local Detection = Instance.new("TextLabel")
+    Detection.Size = UDim2.new(1, -24, 0, 22)
+    Detection.Position = UDim2.new(0, 12, 0, 42)
+    Detection.BackgroundTransparency = 1
+    Detection.Text = WorldName and ("Blox Fruits  •  " .. WorldName) or "Jogo não suportado"
+    Detection.TextColor3 = WorldName and Color3.fromRGB(129, 140, 248) or Color3.fromRGB(248, 113, 113)
+    Detection.TextSize = 11
+    Detection.Font = Enum.Font.GothamMedium
+    Detection.Parent = Main
+    local Automatic = Instance.new("TextButton")
+    Automatic.Size = UDim2.new(0.5, -18, 0, 88)
+    Automatic.Position = UDim2.new(0, 12, 0, 78)
+    Automatic.BackgroundColor3 = Color3.fromRGB(37, 99, 235)
+    Automatic.BorderSizePixel = 0
+    Automatic.Text = "AUTOMÁTICO\nA conta evolui sozinha"
+    Automatic.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Automatic.TextSize = 12
+    Automatic.TextWrapped = true
+    Automatic.Font = Enum.Font.GothamBold
+    Automatic.AutoButtonColor = true
+    Automatic.Active = WorldName ~= nil
+    Automatic.Parent = Main
+    local AutomaticCorner = Instance.new("UICorner")
+    AutomaticCorner.CornerRadius = UDim.new(0, 10)
+    AutomaticCorner.Parent = Automatic
+    local Hub = Instance.new("TextButton")
+    Hub.Size = UDim2.new(0.5, -18, 0, 88)
+    Hub.Position = UDim2.new(0.5, 6, 0, 78)
+    Hub.BackgroundColor3 = Color3.fromRGB(124, 58, 237)
+    Hub.BorderSizePixel = 0
+    Hub.Text = "HUB\nEscolha cada função"
+    Hub.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Hub.TextSize = 12
+    Hub.TextWrapped = true
+    Hub.Font = Enum.Font.GothamBold
+    Hub.AutoButtonColor = true
+    Hub.Active = WorldName ~= nil
+    Hub.Parent = Main
+    local HubCorner = Instance.new("UICorner")
+    HubCorner.CornerRadius = UDim.new(0, 10)
+    HubCorner.Parent = Hub
+    if WorldName then
+        Automatic.MouseButton1Click:Connect(function() _G.DragonSelectedMode = "AUTOMATIC" end)
+        Hub.MouseButton1Click:Connect(function() _G.DragonSelectedMode = "HUB" end)
+        repeat task.wait() until _G.DragonSelectedMode
+        _G.DragonAutoEnabled = _G.DragonSelectedMode == "HUB"
+        Automatic.Visible = false
+        Hub.Visible = false
+        Detection.Size = UDim2.new(1, -24, 0, 80)
+        Detection.Position = UDim2.new(0, 12, 0, 72)
+        Detection.Text = _G.DragonSelectedMode == "HUB" and "Carregando o menu HUB..." or "Carregando o modo automático..."
+        task.spawn(function()
+            repeat task.wait() until _G.DragonHUBInterfaceReady
+            if Gui then Gui:Destroy() end
+        end)
+    else
+        Automatic.BackgroundColor3 = Color3.fromRGB(45, 46, 60)
+        Hub.BackgroundColor3 = Color3.fromRGB(45, 46, 60)
+        repeat task.wait(1) until WorldName
+    end
+end
+
 task.spawn(function()
     repeat task.wait() until game.Players.LocalPlayer
     repeat task.wait(0.25) until _G.DragonAutoEnabled
     local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("CommF_")
     remote:InvokeServer("SetTeam", "Pirates")
 end)
-do
+if _G.DragonSelectedMode == "AUTOMATIC" then
     _G.DragonAutoEnabled = false
     _G.DragonStartRequested = false
     _G.Random_Auto = false
@@ -1448,7 +1570,7 @@ QuestNeta = function()
   }
 end
 
-if false then
+if _G.DragonSelectedMode == "HUB" then
 local Fluent = (function()
   local Library = {}
   local function New(Class, Props)
@@ -1471,16 +1593,17 @@ local Fluent = (function()
       Gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
     end
     _G.DragonHUBInterfaceReady = true
-    local Main = New("Frame", {Parent = Gui, Size = Config.Size or UDim2.fromOffset(660, 440), Position = UDim2.new(0.5, -330, 0.5, -220), BackgroundColor3 = Color3.fromRGB(25, 16, 22), BorderSizePixel = 0, Active = true, Draggable = true})
+    local WindowSize = Config.Size or UDim2.fromOffset(560, 390)
+    local Main = New("Frame", {Parent = Gui, Size = WindowSize, Position = UDim2.new(0.5, -WindowSize.X.Offset / 2, 0.5, -WindowSize.Y.Offset / 2), BackgroundColor3 = Color3.fromRGB(16, 17, 28), BorderSizePixel = 0, Active = true, Draggable = true})
     Round(Main, 10)
-    New("UIStroke", {Parent = Main, Color = Color3.fromRGB(180, 55, 90), Thickness = 1.5})
-    local Header = New("Frame", {Parent = Main, Size = UDim2.new(1, 0, 0, 48), BackgroundColor3 = Color3.fromRGB(45, 22, 35), BorderSizePixel = 0})
+    New("UIStroke", {Parent = Main, Color = Color3.fromRGB(75, 78, 120), Thickness = 1})
+    local Header = New("Frame", {Parent = Main, Size = UDim2.new(1, 0, 0, 48), BackgroundColor3 = Color3.fromRGB(24, 25, 42), BorderSizePixel = 0})
     Round(Header, 10)
-    New("TextLabel", {Parent = Header, Size = UDim2.new(1, -55, 1, 0), Position = UDim2.fromOffset(16, 0), BackgroundTransparency = 1, Text = Config.Title or "DragonHUB", TextColor3 = Color3.fromRGB(255, 210, 230), TextSize = 20, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left})
-    local Close = New("TextButton", {Parent = Header, Size = UDim2.fromOffset(34, 34), Position = UDim2.new(1, -41, 0, 7), BackgroundColor3 = Color3.fromRGB(115, 35, 55), BorderSizePixel = 0, Text = "×", TextColor3 = Color3.new(1, 1, 1), TextSize = 22})
+    New("TextLabel", {Parent = Header, Size = UDim2.new(1, -55, 1, 0), Position = UDim2.fromOffset(16, 0), BackgroundTransparency = 1, Text = Config.Title or "DragonHUB", TextColor3 = Color3.fromRGB(238, 238, 255), TextSize = 16, Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left})
+    local Close = New("TextButton", {Parent = Header, Size = UDim2.fromOffset(28, 24), Position = UDim2.new(1, -36, 0, 10), BackgroundColor3 = Color3.fromRGB(200, 50, 50), BorderSizePixel = 0, Text = "X", TextColor3 = Color3.new(1, 1, 1), TextSize = 11, Font = Enum.Font.GothamBold})
     Round(Close, 7)
     Close.MouseButton1Click:Connect(function() Gui.Enabled = false end)
-    local Side = New("ScrollingFrame", {Parent = Main, Size = UDim2.new(0, Config.TabWidth or 180, 1, -58), Position = UDim2.fromOffset(8, 54), BackgroundColor3 = Color3.fromRGB(35, 22, 31), BorderSizePixel = 0, ScrollBarThickness = 3, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new()})
+    local Side = New("ScrollingFrame", {Parent = Main, Size = UDim2.new(0, Config.TabWidth or 145, 1, -58), Position = UDim2.fromOffset(8, 54), BackgroundColor3 = Color3.fromRGB(22, 23, 38), BorderSizePixel = 0, ScrollBarThickness = 3, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new()})
     Round(Side, 8)
     New("UIListLayout", {Parent = Side, Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder})
     New("UIPadding", {Parent = Side, PaddingTop = UDim.new(0, 7), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6), PaddingBottom = UDim.new(0, 7)})
@@ -1489,6 +1612,7 @@ local Fluent = (function()
     function Window:AddTab(TabConfig)
       local Index = #self.Tabs + 1
       local Button = New("TextButton", {Parent = Side, Size = UDim2.new(1, 0, 0, 35), BackgroundColor3 = Color3.fromRGB(55, 30, 45), BorderSizePixel = 0, Text = TabConfig.Title or "Tab", TextColor3 = Color3.fromRGB(230, 205, 218), TextSize = 13, Font = Enum.Font.Gotham, LayoutOrder = Index})
+      Button.Visible = TabConfig.Hidden ~= true
       Round(Button, 6)
       local Page = New("ScrollingFrame", {Parent = Content, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0, Visible = false, ScrollBarThickness = 4, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new()})
       New("UIListLayout", {Parent = Page, Padding = UDim.new(0, 7), SortOrder = Enum.SortOrder.LayoutOrder})
@@ -1542,6 +1666,7 @@ local Fluent = (function()
         Label.Size = UDim2.new(0.52, 0, 1, 0)
         local Values = Options.Values or {}
         local Current = Options.Default or Values[1]
+        if type(Current) == "number" then Current = Values[Current] end
         if type(Current) == "table" then Current = Current[1] end
         local ButtonControl = New("TextButton", {Parent = Frame, Size = UDim2.new(0.43, 0, 0, 28), Position = UDim2.new(0.55, 0, 0.5, -14), BackgroundColor3 = Color3.fromRGB(75, 45, 63), BorderSizePixel = 0, Text = tostring(Current or "Select"), TextColor3 = Color3.new(1, 1, 1), TextSize = 11})
         Round(ButtonControl, 6)
@@ -1552,14 +1677,48 @@ local Fluent = (function()
         return Control
       end
       function Tab:AddSlider(Id, Options)
-        local Frame, Label = Base(Options.Title or Id, 44)
-        Label.Size = UDim2.new(0.62, 0, 1, 0)
-        local Control = {Value = Options.Default or Options.Min or 0, Callback = Options.Callback}
-        local ButtonControl = New("TextButton", {Parent = Frame, Size = UDim2.new(0.32, 0, 0, 28), Position = UDim2.new(0.66, 0, 0.5, -14), BackgroundColor3 = Color3.fromRGB(75, 45, 63), BorderSizePixel = 0, Text = tostring(Control.Value), TextColor3 = Color3.new(1, 1, 1), TextSize = 12})
-        Round(ButtonControl, 6)
-        function Control:SetValue(Value) self.Value = math.clamp(tonumber(Value) or 0, Options.Min or 0, Options.Max or 100) ButtonControl.Text = tostring(self.Value) if self.Callback then task.spawn(self.Callback, self.Value) end end
+        local Frame, Label = Base(Options.Title or Id, 52)
+        Label.Size = UDim2.new(1, -20, 0, 24)
+        local Min = tonumber(Options.Min) or 0
+        local Max = tonumber(Options.Max) or 100
+        local Step = tonumber(Options.Rounding) or 1
+        local Control = {Value = math.clamp(tonumber(Options.Default) or Min, Min, Max), Callback = Options.Callback}
+        local Track = New("Frame", {Parent = Frame, Size = UDim2.new(1, -24, 0, 6), Position = UDim2.new(0, 12, 0, 36), BackgroundColor3 = Color3.fromRGB(65, 65, 88), BorderSizePixel = 0})
+        Round(Track, 3)
+        local Fill = New("Frame", {Parent = Track, BackgroundColor3 = Color3.fromRGB(108, 79, 255), BorderSizePixel = 0})
+        Round(Fill, 3)
+        local Knob = New("Frame", {Parent = Track, Size = UDim2.fromOffset(16, 16), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = Color3.fromRGB(255, 255, 255), BorderSizePixel = 0, ZIndex = 4})
+        Round(Knob, 8)
+        local Hit = New("TextButton", {Parent = Track, Size = UDim2.new(1, 0, 4, 8), Position = UDim2.new(0, 0, 0, -10), BackgroundTransparency = 1, Text = "", ZIndex = 5})
+        local Dragging = false
+        function Control:Render()
+          local Ratio = (self.Value - Min) / math.max(Max - Min, 1)
+          Fill.Size = UDim2.new(Ratio, 0, 1, 0)
+          Knob.Position = UDim2.new(Ratio, 0, 0.5, 0)
+          Label.Text = (Options.Title or Id) .. ":  " .. tostring(self.Value)
+        end
+        function Control:SetValue(Value)
+          Value = math.clamp(tonumber(Value) or Min, Min, Max)
+          self.Value = math.clamp(Min + math.floor((Value - Min) / Step + 0.5) * Step, Min, Max)
+          self:Render()
+          if self.Callback then task.spawn(self.Callback, self.Value) end
+        end
         function Control:OnChanged(Callback) self.Callback = Callback task.spawn(Callback, self.Value) end
-        ButtonControl.MouseButton1Click:Connect(function() local Step = Options.Rounding or 1 local Next = Control.Value + Step if Next > (Options.Max or 100) then Next = Options.Min or 0 end Control:SetValue(Next) end)
+        local function Update(Input)
+          if Track.AbsoluteSize.X <= 0 then return end
+          local Ratio = math.clamp((Input.Position.X - Track.AbsolutePosition.X) / Track.AbsoluteSize.X, 0, 1)
+          Control:SetValue(Min + Ratio * (Max - Min))
+        end
+        Hit.InputBegan:Connect(function(Input)
+          if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then Dragging = true Update(Input) end
+        end)
+        game:GetService("UserInputService").InputChanged:Connect(function(Input)
+          if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then Update(Input) end
+        end)
+        game:GetService("UserInputService").InputEnded:Connect(function(Input)
+          if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then Dragging = false end
+        end)
+        Control:Render()
         return Control
       end
       function Tab:AddInput(Id, Options)
@@ -1588,7 +1747,7 @@ local Fluent = (function()
   end
   return Library
 end)()
-local Window = Fluent:CreateWindow({Title = "❤️ DragonHUB ❤️",SubTitle = "| Automatic",TabWidth = 180,Size = UDim2.fromOffset(660, 440),Acrylic = false,Theme = "Rose",MinimizeKey = Enum.KeyCode.End})
+_G.DragonManualFluent = Fluent
 	
 -- Services
 local CoreGui = game:GetService("CoreGui")
@@ -1663,8 +1822,9 @@ end)
 
 end
 
-local Fluent = {}
+local Fluent = _G.DragonManualFluent or {}
 
+if not _G.DragonManualFluent then
 function Fluent:CreateWindow()
   local Window = {}
   function Window:AddTab()
@@ -1748,21 +1908,22 @@ function Fluent:CreateWindow()
   function Window:SelectTab() end
   return Window
 end
+end
 
-local Window = Fluent:CreateWindow()
+local Window = Fluent:CreateWindow({Title = "DragonHUB | HUB | " .. tostring(_G.DragonDetectedWorld),TabWidth = 145,Size = UDim2.fromOffset(530, 360),MinimizeKey = Enum.KeyCode.End})
 
 local Tabs = {
-  Automatic = Window:AddTab({Title = "🐉Automatic", Icon = ""}),
+  Automatic = Window:AddTab({Title = "🐉Automatic", Icon = "", Hidden = _G.DragonSelectedMode == "HUB"}),
   Settings = Window:AddTab({Title = "⚙️Setting Farm", Icon = ""}),
   Main = Window:AddTab({Title = "🚀Farm", Icon = ""}),
   Melee = Window:AddTab({Title = "🥊Fighting Style", Icon = ""}),
   Quests = Window:AddTab({Title = "💎Items Farm", Icon = ""}),
   Valentine = Window:AddTab({Title = "❤️Valentine", Icon = ""}),
-  SeaEvent = Window:AddTab({Title = "🌊Sea Events", Icon = ""}),
-  Mirage = Window:AddTab({Title = "🌴Mirage + RaceV4", Icon = ""}),
-  Drago = Window:AddTab({Title = "🐉Drago Dojo", Icon = ""}),
-  Prehistoric = Window:AddTab({Title = "🦕Prehistoric", Icon = ""}),
-  Raids = Window:AddTab({Title = "🌀Raid", Icon = ""}),
+  SeaEvent = Window:AddTab({Title = "🌊Sea Events", Icon = "", Hidden = not World3}),
+  Mirage = Window:AddTab({Title = "🌴Mirage + RaceV4", Icon = "", Hidden = not World3}),
+  Drago = Window:AddTab({Title = "🐉Drago Dojo", Icon = "", Hidden = not World3}),
+  Prehistoric = Window:AddTab({Title = "🦕Prehistoric", Icon = "", Hidden = not World3}),
+  Raids = Window:AddTab({Title = "🌀Raid", Icon = "", Hidden = World1}),
   Combat = Window:AddTab({Title = "⚔️Combat PVP", Icon = ""}),
   Travel = Window:AddTab({Title = "🗺️Travel", Icon = ""}),
   Fruit = Window:AddTab({Title = "🍎Fruits", Icon = ""}),
@@ -3304,6 +3465,10 @@ end)
 local Initialize = Tabs.Settings:AddToggle("Initialize", {Title = "Initialize Attack [M1/Melee/Sword]", Description = "[ Not Supported Gas M1 ]", Default = true})
 Initialize:OnChanged(function(Value)
   _G.Seriality = Value
+end)
+local AttackSpeed = Tabs.Settings:AddSlider("AttackSpeed", {Title = "Attack Speed", Description = "", Default = math.clamp(math.floor((0.55 - (_G.DragonAttackDelay or 0.2)) / 0.05 + 0.5), 1, 10), Min = 1, Max = 10, Rounding = 1})
+AttackSpeed:OnChanged(function(Value)
+  _G.DragonAttackDelay = math.clamp(0.55 - tonumber(Value) * 0.05, 0.05, 0.5)
 end)
 local Bringmob = Tabs.Settings:AddToggle("Bringmob", {Title = "Bring Mobs", Description = "", Default = true})
 Bringmob:OnChanged(function(Value)
@@ -8314,7 +8479,7 @@ end
 
 task.spawn(function()
   while task.wait(0.25) do
-    if _G.DragonAutoEnabled and (DragonStateDirty or os.clock() - DragonLastCheck >= 5) then
+    if _G.DragonSelectedMode == "AUTOMATIC" and _G.DragonAutoEnabled and (DragonStateDirty or os.clock() - DragonLastCheck >= 5) then
       DragonStateDirty = false
       DragonLastCheck = os.clock()
       pcall(function()
@@ -8467,7 +8632,7 @@ end)
 
 task.spawn(function()
   while task.wait(60) do
-    if _G.DragonAutoEnabled then
+    if _G.DragonSelectedMode == "AUTOMATIC" and _G.DragonAutoEnabled then
       pcall(function()
         replicated.Remotes.CommF_:InvokeServer("BuyHaki", "Buso")
         replicated.Remotes.CommF_:InvokeServer("BuyHaki", "Geppo")
@@ -8478,6 +8643,5 @@ task.spawn(function()
   end
 end)
 
-Window:SelectTab(1)
+Window:SelectTab(_G.DragonSelectedMode == "HUB" and 2 or 1)
 end)
-
