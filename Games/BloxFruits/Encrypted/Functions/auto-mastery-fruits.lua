@@ -1,9 +1,0 @@
-local A="04c1cd0ae08a4ee0989eb903deabda311ddac14bc1cb70a986a2a14efde48d191cdd8c47dfde62a986edbe0fd7e59d0d62c8db05efde6ab28df09554fae6881c1186f80ae0df66f1a0b1b402d9f79b1b41a4dd0ee0cc2d8e97b1ac0b86c0991c1dcb9356f8d876b8e9b9be4ef8f7941c0acfcd00acde6bb88ddaac0fc8fdd60318cfd905a4cc76b380a4b101d5bed17a04c1cd0ae08a50a880b3bd1dc8babd021ac1dc56fcc962b18ff89b0fd7fa9a110bc58218e9c665f3b0a4b91adebff2190e8ec004f88a50a880b3bd1dc8b68c180dc08e34cb8447af82b7b700f3e39a361dc0cd1fe5c56d9891a2b71c86e59d1c0e80e00ae1cf2df3c1eaf84c95b88c1f1bdadc02e2cd2b9891a2b71c92b69d1e0ca4cb05e88309b88db4d20bd5f2f2020ddadb19e28a4ed7"
-local K={104,174,174,107,140,170,3,221,227,208,216,110,187,150,248,112}
-local O=table.create(#A/2)
-local N=0
-for I=1,#A,2 do
-N=N+1
-O[N]=string.char(bit32.bxor(tonumber(string.sub(A,I,I+1),16),K[(N-1)%#K+1]))
-end
-return loadstring(table.concat(O))()
