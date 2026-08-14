@@ -16,22 +16,8 @@ return {
     HubUI = Source("HubUI.lua"),
     HubLayout = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/HubLayout.lua" .. Version,
     Runtime = Source("Runtime.lua"),
-    Functions = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Functions.lua" .. Version,
     Modes = {
         AUTOMATIC = Source("Modes/Automatic.lua"),
         HUB = Source("Modes/HUB.lua")
-    },
-    Modules = {
-        Settings = Source("Modules/Settings.lua"),
-        Farm = Source("Modules/Farm.lua"),
-        Melee = Source("Modules/Melee.lua"),
-        Items = Source("Modules/Items.lua"),
-        Events = Source("Modules/Events.lua"),
-        Raids = Source("Modules/Raids.lua"),
-        Combat = Source("Modules/Combat.lua"),
-        Travel = Source("Modules/Travel.lua"),
-        Fruits = Source("Modules/Fruits.lua"),
-        Shop = Source("Modules/Shop.lua"),
-        Misc = Source("Modules/Misc.lua")
     }
 }

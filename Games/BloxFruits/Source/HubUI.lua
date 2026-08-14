@@ -20,8 +20,10 @@ if Old then Old:Destroy() end
 end
 end
 RemoveOldInterfaces(GuiParent)
-pcall(function() RemoveOldInterfaces(game:GetService("CoreGui")) end)
-pcall(function() if gethui then RemoveOldInterfaces(gethui()) end end)
+pcall(function()
+    RemoveOldInterfaces(game:GetService("CoreGui")) end)
+pcall(function()
+    if gethui then RemoveOldInterfaces(gethui()) end end)
 
 local function Round(Object,Radius)
 local Corner=Instance.new("UICorner")
@@ -29,33 +31,22 @@ Corner.CornerRadius=UDim.new(0,Radius)
 Corner.Parent=Object
 end
 
-local function LoadFunction(Name)
-_G.DragonLoadedFunctionModules=_G.DragonLoadedFunctionModules or {}
-if _G.DragonLoadedFunctionModules[Name] then return _G.DragonLoadedFunctionModules[Name] end
-local Link=_G.DragonFunctionLinks and _G.DragonFunctionLinks[Name]
-if not Link then return nil end
-local Success,Module=pcall(function() return loadstring(game:HttpGet(Link))() end)
-if Success then _G.DragonLoadedFunctionModules[Name]=Module or true return Module end
-_G.DragonHubFunctionError="Falha ao carregar "..tostring(Name)..": "..tostring(Module)
-end
-
 local function RunSafe(Name,Callback,...)
 local Arguments={...}
 task.spawn(function()
-local Success,Error=pcall(function() Callback(unpack(Arguments)) end)
+local Success,Error=pcall(function()
+    Callback(unpack(Arguments)) end)
 if not Success then _G.DragonHubFunctionError=tostring(Name)..": "..tostring(Error) end
 end)
 end
 
 local function Dispatch(Name,Value)
 _G.DragonHubFunctionError=nil
-local Module=LoadFunction(Name)
 local Callback=Callbacks[Name]
 if Callback then
-if Module and Module.Apply then Module:Apply(Value,Callback) else RunSafe(Name,Callback,Value) end
+RunSafe(Name,Callback,Value)
 else
 Pending[Name]=Value
-if Module and Module.Apply then Module:Apply(Value) end
 end
 end
 
@@ -135,7 +126,8 @@ Close.Font=Enum.Font.GothamBold
 Close.TextSize=10
 Close.Parent=Header
 Round(Close,5)
-Close.MouseButton1Click:Connect(function() Gui.Enabled=false end)
+Close.MouseButton1Click:Connect(function()
+    Gui.Enabled=false end)
 
 local Status=Instance.new("TextLabel")
 Status.Size=UDim2.new(1,-150,0,22)
@@ -237,9 +229,12 @@ Hit.Parent=Row
 local Value=false
 local function Render()
 Track.BackgroundColor3=Value and Color3.fromRGB(37,99,235) or Color3.fromRGB(63,66,85)
-Knob:TweenPosition(Value and UDim2.new(1,-19,.5,-8) or UDim2.new(0,3,.5,-8),Enum.EasingDirection.Out,Enum.EasingStyle.Quad,.12,true)
+Knob:TweenPosition(Value and UDim2.new(1,-19,.5,-8) or UDim2.new(0,3,.5,-8),Enum.EasingDirection.Out,
+    Enum.EasingStyle.Quad,.12,true)
 end
-Hit.MouseButton1Click:Connect(function() Value=not Value Render() Dispatch(Data.Title,Value) end)
+Hit.MouseButton1Click:Connect(function()
+    Value=not Value Render()
+    Dispatch(Data.Title,Value) end)
 Render()
 end
 
@@ -281,7 +276,8 @@ Fill.Parent=Track
 Round(Fill,3)
 local Value=Data.Default or Data.Min or 0
 local function Set(Input)
-local Ratio=math.clamp((Input.Position.X-Track.AbsolutePosition.X)/math.max(Track.AbsoluteSize.X,1),0,1)
+local Ratio=math.clamp((Input.Position.X-Track.AbsolutePosition.X)/math.max(Track.AbsoluteSize.X,1),0,
+    1)
 Value=math.floor((Data.Min+Ratio*(Data.Max-Data.Min))+.5)
 Fill.Size=UDim2.new(Ratio,0,1,0)
 Text.Text=Data.Title..": "..tostring(Value)
@@ -297,9 +293,13 @@ Hit.BackgroundTransparency=1
 Hit.Text=""
 Hit.Parent=Track
 local Drag=false
-Hit.InputBegan:Connect(function(Input) if Input.UserInputType==Enum.UserInputType.MouseButton1 or Input.UserInputType==Enum.UserInputType.Touch then Drag=true Set(Input) end end)
-UIS.InputChanged:Connect(function(Input) if Drag and (Input.UserInputType==Enum.UserInputType.MouseMovement or Input.UserInputType==Enum.UserInputType.Touch) then Set(Input) end end)
-UIS.InputEnded:Connect(function(Input) if Input.UserInputType==Enum.UserInputType.MouseButton1 or Input.UserInputType==Enum.UserInputType.Touch then Drag=false end end)
+Hit.InputBegan:Connect(function(Input)
+    if Input.UserInputType==Enum.UserInputType.MouseButton1 or Input.UserInputType==Enum.UserInputType.Touch then Drag=true
+    Set(Input) end end)
+UIS.InputChanged:Connect(function(Input)
+    if Drag and (Input.UserInputType==Enum.UserInputType.MouseMovement or Input.UserInputType==Enum.UserInputType.Touch) then Set(Input) end end)
+UIS.InputEnded:Connect(function(Input)
+    if Input.UserInputType==Enum.UserInputType.MouseButton1 or Input.UserInputType==Enum.UserInputType.Touch then Drag=false end end)
 end
 
 local ActiveDropdownClose
@@ -373,7 +373,8 @@ Overlay.MouseButton1Click:Connect(ClosePopup)
 for Order,Value in ipairs(Values) do
 local Option=Instance.new("TextButton")
 Option.Size=UDim2.new(1,-4,0,27)
-Option.BackgroundColor3=tostring(Value)==Hit.Text and Color3.fromRGB(37,99,235) or Color3.fromRGB(38,41,62)
+Option.BackgroundColor3=tostring(Value)==Hit.Text and Color3.fromRGB(37,99,235) or Color3.fromRGB(38,
+    41,62)
 Option.BorderSizePixel=0
 Option.Text=tostring(Value)
 Option.TextColor3=Color3.fromRGB(232,235,250)
@@ -434,7 +435,8 @@ local First
 local function Select(Page)
 if ActiveDropdownClose then ActiveDropdownClose() end
 for _,P in pairs(Pages) do P.Visible=P==Page end
-for Button,P in pairs(TabButtons) do Button.BackgroundColor3=P==Page and Color3.fromRGB(37,99,235) or Color3.fromRGB(34,36,55) end
+for Button,P in pairs(TabButtons) do Button.BackgroundColor3=P==Page and Color3.fromRGB(37,99,235) or Color3.fromRGB(34,
+    36,55) end
 end
 
 for Order,Tab in ipairs(Layout) do
@@ -478,7 +480,8 @@ end
 end
 Pages[Tab.Key]=Page
 TabButtons[Button]=Page
-Button.MouseButton1Click:Connect(function() Select(Page) end)
+Button.MouseButton1Click:Connect(function()
+    Select(Page) end)
 if not First then First=Page end
 end
 end
@@ -488,7 +491,8 @@ local Dragging=false
 local DragStart
 local StartPosition
 Header.InputBegan:Connect(function(Input)
-if Input.UserInputType==Enum.UserInputType.MouseButton1 or Input.UserInputType==Enum.UserInputType.Touch then Dragging=true DragStart=Input.Position StartPosition=Main.Position end
+if Input.UserInputType==Enum.UserInputType.MouseButton1 or Input.UserInputType==Enum.UserInputType.Touch then Dragging=true
+    DragStart=Input.Position StartPosition=Main.Position end
 end)
 UIS.InputChanged:Connect(function(Input)
 if Dragging and (Input.UserInputType==Enum.UserInputType.MouseMovement or Input.UserInputType==Enum.UserInputType.Touch) then
@@ -496,7 +500,8 @@ local Delta=Input.Position-DragStart
 Main.Position=UDim2.new(StartPosition.X.Scale,StartPosition.X.Offset+Delta.X,StartPosition.Y.Scale,StartPosition.Y.Offset+Delta.Y)
 end
 end)
-UIS.InputEnded:Connect(function(Input) if Input.UserInputType==Enum.UserInputType.MouseButton1 or Input.UserInputType==Enum.UserInputType.Touch then Dragging=false end end)
+UIS.InputEnded:Connect(function(Input)
+    if Input.UserInputType==Enum.UserInputType.MouseButton1 or Input.UserInputType==Enum.UserInputType.Touch then Dragging=false end end)
 
 local Minimized=false
 Minimize.MouseButton1Click:Connect(function()
