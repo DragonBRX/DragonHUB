@@ -20,4 +20,6 @@ O modo HUB utiliza somente a interface própria do DragonHUB. O runtime funciona
 
 Os seletores abrem uma lista flutuante com rolagem e seleção única. Isso permite escolher diretamente frutas, materiais, armas, barcos e outras opções sem percorrer os valores com vários cliques.
 
-`Auto Random Fruit` envia a tentativa de giro imediatamente ao ser ativado. Regras de preço e cooldown são decididas pelo servidor do jogo, sem bloqueios adicionais do DragonHUB.
+O menu de frutas consulta o estoque com segurança e permite atualizar a lista, comprar a fruta básica ou Mirage selecionada, escolher qualquer fruta no seletor do sniper e ativar a compra automática quando ela aparecer. A compra básica usa a mesma assinatura confirmada no código anterior: `PurchaseRawFruit`, nome selecionado e `false`.
+
+`Auto Random Fruit` envia a tentativa de giro imediatamente ao ser ativado e repete a chamada original a cada 0,1 segundo. `Random Fruit Now` executa uma tentativa direta sem depender do toggle. Regras ou respostas restantes são decididas pelo servidor do jogo, sem cálculo local de dinheiro ou espera inicial no DragonHUB.

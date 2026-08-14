@@ -174,6 +174,7 @@ return {
 ["Esp Advanced Fruits Dealer"]=Root.."esp-advanced-fruits-dealer.lua"..Version,
 ["Auto Travel"]=Root.."auto-travel.lua"..Version,
 ["Auto Tween to NPCs"]=Root.."auto-tween-to-npcs.lua"..Version,
+["Auto Buy Selected Fruit"]=Root.."auto-buy-selected-fruit.lua"..Version,
 ["Auto Random Fruit"]=Root.."auto-random-fruit.lua"..Version,
 ["Auto Drop Fruit"]=Root.."auto-drop-fruit.lua"..Version,
 ["Auto Store Fruit"]=Root.."auto-store-fruit.lua"..Version,

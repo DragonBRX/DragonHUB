@@ -244,10 +244,14 @@ Key="Travel",Title="Viagem",World="All",Controls={
 {
 Key="Fruit",Title="Frutas",World="All",Controls={
 {Type="Dropdown",Title="Select Fruit Stock",World="All"},
+{Type="Button",Title="Refresh Fruit Stock",World="All"},
 {Type="Button",Title="Buy Basic Stock",World="All"},
 {Type="Dropdown",Title="Select Mirage Fruit",World="All"},
 {Type="Button",Title="Buy Mirage Stock",World="All"},
+{Type="Dropdown",Title="Select Fruit Sniper",World="All"},
+{Type="Toggle",Title="Auto Buy Selected Fruit",World="All"},
 {Type="Toggle",Title="Auto Random Fruit",World="All"},
+{Type="Button",Title="Random Fruit Now",World="All"},
 {Type="Toggle",Title="Auto Drop Fruit",World="All"},
 {Type="Toggle",Title="Auto Store Fruit",World="All"},
 {Type="Toggle",Title="Auto Tween to Fruit",World="All"},
