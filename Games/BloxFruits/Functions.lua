@@ -1,4 +1,4 @@
-local Root="https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Encrypted/Functions/"
+local Root="https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Source/Functions/"
 local Version="?v="..tostring(os.time())
 return {
 ["Auto Farm Level"]=Root.."auto-farm-level.lua"..Version,

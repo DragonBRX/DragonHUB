@@ -1,6 +1,6 @@
-local Root = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Encrypted/"
+local Root = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Source/"
 local Version = "?v=" .. tostring(os.time())
-local function Encrypted(Path)
+local function Source(Path)
     return Root .. Path .. Version
 end
 
@@ -12,26 +12,26 @@ return {
         Sea2 = {4442272183, 79091703265657},
         Sea3 = {7449423635, 100117331123089}
     },
-    UI = Encrypted("UI.lua"),
-    HubUI = Encrypted("HubUI.lua"),
+    UI = Source("UI.lua"),
+    HubUI = Source("HubUI.lua"),
     HubLayout = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/HubLayout.lua" .. Version,
-    Runtime = Encrypted("Runtime.lua"),
+    Runtime = Source("Runtime.lua"),
     Functions = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Functions.lua" .. Version,
     Modes = {
-        AUTOMATIC = Encrypted("Modes/Automatic.lua"),
-        HUB = Encrypted("Modes/HUB.lua")
+        AUTOMATIC = Source("Modes/Automatic.lua"),
+        HUB = Source("Modes/HUB.lua")
     },
     Modules = {
-        Settings = Encrypted("Modules/Settings.lua"),
-        Farm = Encrypted("Modules/Farm.lua"),
-        Melee = Encrypted("Modules/Melee.lua"),
-        Items = Encrypted("Modules/Items.lua"),
-        Events = Encrypted("Modules/Events.lua"),
-        Raids = Encrypted("Modules/Raids.lua"),
-        Combat = Encrypted("Modules/Combat.lua"),
-        Travel = Encrypted("Modules/Travel.lua"),
-        Fruits = Encrypted("Modules/Fruits.lua"),
-        Shop = Encrypted("Modules/Shop.lua"),
-        Misc = Encrypted("Modules/Misc.lua")
+        Settings = Source("Modules/Settings.lua"),
+        Farm = Source("Modules/Farm.lua"),
+        Melee = Source("Modules/Melee.lua"),
+        Items = Source("Modules/Items.lua"),
+        Events = Source("Modules/Events.lua"),
+        Raids = Source("Modules/Raids.lua"),
+        Combat = Source("Modules/Combat.lua"),
+        Travel = Source("Modules/Travel.lua"),
+        Fruits = Source("Modules/Fruits.lua"),
+        Shop = Source("Modules/Shop.lua"),
+        Misc = Source("Modules/Misc.lua")
     }
 }
