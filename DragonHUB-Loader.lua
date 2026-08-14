@@ -2,7 +2,7 @@ local Registry = {
     {
         UniverseIds = {994732206},
         PlaceIds = {2753915549, 85211729168715, 4442272183, 79091703265657, 7449423635, 100117331123089},
-        Manifest = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Links.lua"
+        Manifest = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Links.lua?v=" .. tostring(os.time())
     }
 }
 

@@ -1,4 +1,8 @@
 local Root = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Encrypted/"
+local Version = "?v=" .. tostring(os.time())
+local function Encrypted(Path)
+    return Root .. Path .. Version
+end
 
 return {
     Game = "Blox Fruits",
@@ -8,26 +12,26 @@ return {
         Sea2 = {4442272183, 79091703265657},
         Sea3 = {7449423635, 100117331123089}
     },
-    UI = Root .. "UI.lua",
-    HubUI = Root .. "HubUI.lua",
-    HubLayout = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/HubLayout.lua",
-    Runtime = Root .. "Runtime.lua",
-    Functions = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Functions.lua",
+    UI = Encrypted("UI.lua"),
+    HubUI = Encrypted("HubUI.lua"),
+    HubLayout = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/HubLayout.lua" .. Version,
+    Runtime = Encrypted("Runtime.lua"),
+    Functions = "https://raw.githubusercontent.com/DragonBRX/DragonHUB/main/Games/BloxFruits/Functions.lua" .. Version,
     Modes = {
-        AUTOMATIC = Root .. "Modes/Automatic.lua",
-        HUB = Root .. "Modes/HUB.lua"
+        AUTOMATIC = Encrypted("Modes/Automatic.lua"),
+        HUB = Encrypted("Modes/HUB.lua")
     },
     Modules = {
-        Settings = Root .. "Modules/Settings.lua",
-        Farm = Root .. "Modules/Farm.lua",
-        Melee = Root .. "Modules/Melee.lua",
-        Items = Root .. "Modules/Items.lua",
-        Events = Root .. "Modules/Events.lua",
-        Raids = Root .. "Modules/Raids.lua",
-        Combat = Root .. "Modules/Combat.lua",
-        Travel = Root .. "Modules/Travel.lua",
-        Fruits = Root .. "Modules/Fruits.lua",
-        Shop = Root .. "Modules/Shop.lua",
-        Misc = Root .. "Modules/Misc.lua"
+        Settings = Encrypted("Modules/Settings.lua"),
+        Farm = Encrypted("Modules/Farm.lua"),
+        Melee = Encrypted("Modules/Melee.lua"),
+        Items = Encrypted("Modules/Items.lua"),
+        Events = Encrypted("Modules/Events.lua"),
+        Raids = Encrypted("Modules/Raids.lua"),
+        Combat = Encrypted("Modules/Combat.lua"),
+        Travel = Encrypted("Modules/Travel.lua"),
+        Fruits = Encrypted("Modules/Fruits.lua"),
+        Shop = Encrypted("Modules/Shop.lua"),
+        Misc = Encrypted("Modules/Misc.lua")
     }
 }
