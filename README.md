@@ -17,3 +17,5 @@ No modo AUTOMÁTICO, os módulos agrupados são carregados antes do runtime. No 
 A interface HUB é carregada antes do runtime por `Encrypted/HubUI.lua`. Ela apresenta abas por categoria, toggles deslizantes, sliders de toque e mouse, botões e seletores. As escolhas feitas durante o carregamento são aplicadas quando o runtime registra os callbacks correspondentes.
 
 O modo HUB utiliza somente a interface própria do DragonHUB. O runtime funciona como adaptador sem interface, não cria janela secundária, não usa bibliotecas visuais externas, não carrega ícones de outros hubs e mantém os títulos sem emojis.
+
+Os seletores abrem uma lista flutuante com rolagem e seleção única. Isso permite escolher diretamente frutas, materiais, armas, barcos e outras opções sem percorrer os valores com vários cliques.
