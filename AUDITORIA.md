@@ -29,9 +29,11 @@ Essa camada aumentava o número de arquivos e requisições HTTP sem separar a l
 
 ## Validação
 
+- `Runtime.lua` agora compila integralmente sem ultrapassar o limite de 200 variáveis locais.
+- Os 9 arquivos Lua passaram na análise sintática após a correção do modo HUB.
 - A sequência de 88.443 tokens do `Runtime.lua` permaneceu idêntica depois da reorganização visual, considerando a remoção intencional dos carregadores artificiais.
 - A sequência de 4.601 tokens do `HubUI.lua` também permaneceu idêntica depois da reorganização visual, considerando a simplificação intencional do despacho.
 - Todas as referências aos arquivos removidos foram eliminadas.
 - O manifesto aponta apenas para arquivos Lua existentes.
 
-O runtime excede o limite de 200 variáveis locais do compilador Lua 5.4 tradicional. Esse limite não é uma consequência da reorganização e já existia no arquivo original; o projeto é destinado ao ambiente Luau do Roblox.
+As referências dos controles da interface não usam o escopo `local` principal. Isso evita o limite do compilador sem alterar os callbacks conectados a cada controle.
