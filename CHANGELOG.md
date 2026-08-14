@@ -1,5 +1,12 @@
 # Changelog
 
+## 14/08/2026 — correção do carregamento do modo HUB
+
+- Corrigido o limite de variáveis locais que impedia a compilação de `Runtime.lua` em alguns executores.
+- Mantidas as 187 funções de toggle e seus respectivos callbacks.
+- O modo HUB agora valida o resultado de `loadstring` e mostra o erro real de compilação quando necessário.
+- O modo AUTOMÁTICO recebeu a mesma validação de carregamento.
+
 ## 14/08/2026 — organização do código-fonte
 
 - Removidos os wrappers genéricos de `Source/Functions` e `Source/Modules`.
